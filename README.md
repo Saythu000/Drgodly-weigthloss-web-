@@ -108,6 +108,13 @@ ssh root@89.167.15.217
 mkdir -p /opt/drgodly-web && cd /opt/drgodly-web && git clone https://github.com/Saythu000/Drgodly-weigthloss-web-.git . && ./install.sh 89.167.15.217
 ```
 
+### Step 3: Pull Latest Updates & Reinstall
+To pull the latest code updates and reinstall on your server:
+
+```bash
+git pull && ./install.sh 89.167.15.217
+```
+
 ---
 
 ## 🔒 Security & Privacy
