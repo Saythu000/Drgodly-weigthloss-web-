@@ -57,17 +57,15 @@ DrGodly Web includes a ForgeChat-style **1-command installer script** (`install.
 3. Clone your GitHub repository and run the installer:
    ```bash
    mkdir -p /opt/drgodly-web && cd /opt/drgodly-web
-   git clone <YOUR_GITHUB_REPO_URL> .
-   ./install.sh clinic.drgodly.com
+   git clone https://github.com/Saythu000/Drgodly-weigthloss-web-.git .
+   ./install.sh 89.167.15.217
    ```
-
-*(Replace `clinic.drgodly.com` with your actual domain or server IP address).*
 
 ---
 
 ## 📱 Connect Your WhatsApp
 
-1. Open your browser to `https://clinic.drgodly.com` (or `http://YOUR_SERVER_IP:3000`).
+1. Open your browser to `http://89.167.15.217:3000`.
 2. Navigate to **Settings** ➔ **WhatsApp Pairing**.
 3. Scan the generated WhatsApp QR Code using your phone's WhatsApp app (**Linked Devices** ➔ **Link a Device**).
 4. Your WhatsApp is now connected! All incoming messages will automatically trigger the AI Intake Wizard.
@@ -84,7 +82,30 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
 docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 
 # Update to latest version
-git pull && ./install.sh clinic.drgodly.com
+git pull && ./install.sh 89.167.15.217
+```
+
+---
+
+## 📝 Complete Hetzner Deployment Commands
+
+### Step 1: Install Docker & Prerequisites in Hetzner Console
+```bash
+apt update
+apt install -y docker.io git
+apt install -y docker-compose-v2
+docker --version
+
+passwd
+# change the password in hetzner console : Mgan@2112
+```
+
+### Step 2: Connect via SSH & Deploy (1-Command Script)
+Now open the terminal in your system and run the command below:
+
+```bash
+ssh root@89.167.15.217
+mkdir -p /opt/drgodly-web && cd /opt/drgodly-web && git clone https://github.com/Saythu000/Drgodly-weigthloss-web-.git . && ./install.sh 89.167.15.217
 ```
 
 ---
