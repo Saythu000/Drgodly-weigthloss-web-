@@ -38,4 +38,3 @@ echo "============================================================"
 echo "🎉 SUCCESS: DrGodly Web is deployed and running on Hetzner CX23!"
 echo "🌐 URL: https://$DOMAIN"
 echo "============================================================"
-EOF
