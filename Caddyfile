@@ -1,0 +1,3 @@
+{$DOMAIN} {
+    reverse_proxy drgodly-web:3000
+}

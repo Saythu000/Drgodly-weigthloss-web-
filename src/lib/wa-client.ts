@@ -1,0 +1,480 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import makeWASocket, {
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion,
+  DisconnectReason,
+  jidNormalizedUser,
+} from '@whiskeysockets/baileys';
+import type { WASocket, ConnectionState } from '@whiskeysockets/baileys';
+
+interface WaState {
+  status: 'idle' | 'starting' | 'awaitingPair' | 'connected' | 'disconnected';
+  qr: string | null;
+  phoneNumber: string | null;
+}
+
+class WebBaileysEngine {
+  private sock: WASocket | null = null;
+  private state: WaState = {
+    status: 'idle',
+    qr: null,
+    phoneNumber: null,
+  };
+  private authDir: string;
+  private sessionDir: string;
+  private connectingPromise: Promise<void> | null = null;
+
+  constructor() {
+    this.authDir = path.resolve(process.cwd(), '.openclaw-local');
+    this.sessionDir = path.resolve(process.cwd(), '.openclaw-local', 'sessions');
+
+    if (!fs.existsSync(this.authDir)) {
+      fs.mkdirSync(this.authDir, { recursive: true });
+    }
+    if (!fs.existsSync(this.sessionDir)) {
+      fs.mkdirSync(this.sessionDir, { recursive: true });
+    }
+  }
+
+  getState(): WaState {
+    return this.state;
+  }
+
+  async start(): Promise<void> {
+    if (this.connectingPromise) return this.connectingPromise;
+    this.connectingPromise = this.connect().catch((err) => {
+      this.connectingPromise = null;
+      console.error('WebBaileysEngine start error:', err);
+    });
+    return this.connectingPromise;
+  }
+
+  async forceReset(): Promise<void> {
+    if (this.sock) {
+      try {
+        this.sock.ws.close();
+      } catch {}
+      this.sock = null;
+    }
+    if (fs.existsSync(this.authDir)) {
+      try {
+        fs.rmSync(this.authDir, { recursive: true, force: true });
+      } catch {}
+    }
+    this.state = {
+      status: 'awaitingPair',
+      qr: null,
+      phoneNumber: null,
+    };
+    this.connectingPromise = null;
+    await this.start();
+  }
+
+  // Standalone Outbound WhatsApp Text Dispatcher
+  async sendTextMessage(to: string, text: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      if (!this.sock || this.state.status !== 'connected') {
+        await this.start();
+      }
+
+      if (!this.sock) {
+        return { success: false, error: 'WhatsApp WebSocket client is not connected' };
+      }
+
+      const cleaned = to.replace(/[^\d]/g, '');
+      const targetJid = to.includes('@') ? to : `${cleaned}@s.whatsapp.net`;
+
+      const sent = await this.sock.sendMessage(targetJid, { text });
+
+      // Save sent text to local session history
+      const safeJid = targetJid.replace(/[^a-zA-Z0-9._@-]/g, '_');
+      const filePath = path.join(this.sessionDir, `${safeJid}.jsonl`);
+      const msgObj = {
+        role: 'user',
+        content: text,
+        ts: Date.now(),
+      };
+      fs.appendFileSync(filePath, JSON.stringify(msgObj) + '\n', 'utf8');
+
+      return {
+        success: true,
+        messageId: sent?.key?.id || `msg-${Date.now()}`,
+      };
+    } catch (err: any) {
+      console.error('Failed to send text message via WebBaileysEngine:', err);
+      return { success: false, error: err?.message || 'Failed to dispatch message' };
+    }
+  }
+
+  // Standalone Outbound Audio Voice Note Dispatcher (PTT = Push to Talk)
+  async sendAudioMessage(
+    to: string,
+    audioBuffer: Buffer,
+    mimetype = 'audio/mp4',
+    transcription?: string
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      if (!this.sock || this.state.status !== 'connected') {
+        await this.start();
+      }
+
+      if (!this.sock) {
+        return { success: false, error: 'WhatsApp WebSocket client is not connected' };
+      }
+
+      const cleaned = to.replace(/[^\d]/g, '');
+      const targetJid = to.includes('@') ? to : `${cleaned}@s.whatsapp.net`;
+
+      const sent = await this.sock.sendMessage(targetJid, {
+        audio: audioBuffer,
+        mimetype,
+        ptt: true,
+      });
+
+      // Save voice note entry to local session history
+      const safeJid = targetJid.replace(/[^a-zA-Z0-9._@-]/g, '_');
+      const filePath = path.join(this.sessionDir, `${safeJid}.jsonl`);
+      const msgObj = {
+        role: 'user',
+        content: `🎤 Voice Note • AI Transcription: "${transcription || 'Voice Note Audio'}"`,
+        isAudio: true,
+        ts: Date.now(),
+      };
+      fs.appendFileSync(filePath, JSON.stringify(msgObj) + '\n', 'utf8');
+
+      return {
+        success: true,
+        messageId: sent?.key?.id || `msg-${Date.now()}`,
+      };
+    } catch (err: any) {
+      console.error('Failed to send audio message via WebBaileysEngine:', err);
+      return { success: false, error: err?.message || 'Failed to dispatch audio voice note' };
+    }
+  }
+
+  // Standalone Outbound Media Dispatcher (Images, Videos, PDF Documents)
+  async sendMediaMessage(
+    to: string,
+    fileBuffer: Buffer,
+    mimetype: string,
+    fileName?: string,
+    caption?: string
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      if (!this.sock || this.state.status !== 'connected') {
+        await this.start();
+      }
+
+      if (!this.sock) {
+        return { success: false, error: 'WhatsApp WebSocket client is not connected' };
+      }
+
+      const cleaned = to.replace(/[^\d]/g, '');
+      const targetJid = to.includes('@') ? to : `${cleaned}@s.whatsapp.net`;
+
+      let mediaContent: any = {};
+      if (mimetype.startsWith('image/')) {
+        mediaContent = { image: fileBuffer, caption: caption || '' };
+      } else if (mimetype.startsWith('video/')) {
+        mediaContent = { video: fileBuffer, caption: caption || '' };
+      } else if (mimetype.startsWith('audio/')) {
+        mediaContent = { audio: fileBuffer, mimetype, ptt: true };
+      } else {
+        mediaContent = {
+          document: fileBuffer,
+          mimetype,
+          fileName: fileName || 'Attachment.pdf',
+          caption: caption || '',
+        };
+      }
+
+      const sent = await this.sock.sendMessage(targetJid, mediaContent);
+
+      // Save media entry to local session history
+      const safeJid = targetJid.replace(/[^a-zA-Z0-9._@-]/g, '_');
+      const filePath = path.join(this.sessionDir, `${safeJid}.jsonl`);
+      const msgObj = {
+        role: 'user',
+        content: `📎 [Media Attachment: ${fileName || mimetype}] ${caption || ''}`,
+        ts: Date.now(),
+      };
+      fs.appendFileSync(filePath, JSON.stringify(msgObj) + '\n', 'utf8');
+
+      return {
+        success: true,
+        messageId: sent?.key?.id || `msg-${Date.now()}`,
+      };
+    } catch (err: any) {
+      console.error('Failed to send media message via WebBaileysEngine:', err);
+      return { success: false, error: err?.message || 'Failed to dispatch media attachment' };
+    }
+  }
+
+  // Standalone Native Baileys Interactive Template Dispatcher
+  async sendTemplateMessage(
+    to: string,
+    template: {
+      headerType?: string;
+      headerText?: string;
+      bodyText: string;
+      footerText?: string;
+      buttons?: Array<{ type: string; text: string; url?: string; phoneNumber?: string; code?: string }>;
+      samples?: Record<string, string>;
+    }
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      if (!this.sock || this.state.status !== 'connected') {
+        await this.start();
+      }
+
+      if (!this.sock) {
+        return { success: false, error: 'WhatsApp WebSocket client is not connected' };
+      }
+
+      const cleaned = to.replace(/[^\d]/g, '');
+      const targetJid = to.includes('@') ? to : `${cleaned}@s.whatsapp.net`;
+
+      // Resolve sample variables in bodyText
+      let resolvedBody = template.bodyText || '';
+      if (template.samples && typeof template.samples === 'object') {
+        Object.keys(template.samples).forEach((v) => {
+          resolvedBody = resolvedBody.replace(new RegExp(`\\{\\{${v}\\}\\}`, 'g'), template.samples![v] || `{{${v}}}`);
+        });
+      }
+
+      let fullText = resolvedBody;
+      if (template.headerType === 'TEXT' && template.headerText) {
+        fullText = `*${template.headerText}*\n\n${resolvedBody}`;
+      }
+
+      // Build Baileys templateButtons
+      const rawButtons = template.buttons || [];
+      const templateButtons = rawButtons.map((b, idx) => {
+        const btnIndex = idx + 1;
+        if (b.type === 'URL') {
+          return {
+            index: btnIndex,
+            urlButton: { displayText: b.text || 'Visit Website', url: b.url || 'https://drgodly.com' },
+          };
+        } else if (b.type === 'PHONE_NUMBER') {
+          return {
+            index: btnIndex,
+            callButton: { displayText: b.text || 'Call Support', phoneNumber: b.phoneNumber || '+919390834107' },
+          };
+        } else if (b.type === 'COPY_CODE') {
+          return {
+            index: btnIndex,
+            quickReplyButton: { displayText: `🎟️ ${b.text}: ${b.code || 'PROMO50'}`, id: `code_${b.code || 'PROMO50'}` },
+          };
+        } else {
+          return {
+            index: btnIndex,
+            quickReplyButton: { displayText: b.text || 'Quick Reply', id: `btn_${btnIndex}` },
+          };
+        }
+      });
+
+      let sent: any;
+      if (templateButtons.length > 0) {
+        try {
+          sent = await this.sock.sendMessage(targetJid, {
+            text: fullText,
+            footer: template.footerText || 'DrGodly Telehealth Clinic',
+            templateButtons,
+          } as any);
+        } catch (bErr) {
+          // Fallback to text message with formatted interactive buttons if templateButtons throws
+          let buttonDetailsText = fullText;
+          if (template.footerText) {
+            buttonDetailsText += `\n\n_${template.footerText}_`;
+          }
+          buttonDetailsText += `\n\n━━━━━━━━━━━━━━━━━━━━\n🔘 *Interactive Buttons:*\n`;
+          rawButtons.forEach((b, i) => {
+            if (b.type === 'URL') buttonDetailsText += `${i + 1}. 🔗 *${b.text}* (${b.url || 'https://drgodly.com'})\n`;
+            else if (b.type === 'PHONE_NUMBER') buttonDetailsText += `${i + 1}. 📞 *${b.text}* (${b.phoneNumber || '+919390834107'})\n`;
+            else if (b.type === 'COPY_CODE') buttonDetailsText += `${i + 1}. 🎟️ *${b.text}* (${b.code || 'PROMO50'})\n`;
+            else buttonDetailsText += `${i + 1}. 🔁 *${b.text}*\n`;
+          });
+          sent = await this.sock.sendMessage(targetJid, { text: buttonDetailsText });
+        }
+      } else {
+        sent = await this.sock.sendMessage(targetJid, {
+          text: fullText,
+          footer: template.footerText || undefined,
+        });
+      }
+
+      // Save sent template entry to local session history
+      const safeJid = targetJid.replace(/[^a-zA-Z0-9._@-]/g, '_');
+      const filePath = path.join(this.sessionDir, `${safeJid}.jsonl`);
+      const msgObj = {
+        role: 'user',
+        content: `📋 [Template Message]: ${fullText}`,
+        ts: Date.now(),
+      };
+      fs.appendFileSync(filePath, JSON.stringify(msgObj) + '\n', 'utf8');
+
+      return {
+        success: true,
+        messageId: sent?.key?.id || `msg-${Date.now()}`,
+      };
+    } catch (err: any) {
+      console.error('Failed to send template message via WebBaileysEngine:', err);
+      return { success: false, error: err?.message || 'Failed to dispatch template message' };
+    }
+  }
+
+  private async connect(): Promise<void> {
+    const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
+    const { version } = await fetchLatestBaileysVersion();
+
+    this.state.status = 'starting';
+
+    const sock = makeWASocket({
+      version,
+      auth: state,
+      printQRInTerminal: false,
+      browser: ['DrGodly Web App', 'Chrome', '1.0.0'],
+      syncFullHistory: false,
+      markOnlineOnConnect: true,
+      defaultQueryTimeoutMs: 120000,
+    });
+
+    this.sock = sock;
+
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        this.state.status = 'awaitingPair';
+        this.state.qr = qr;
+      }
+
+      if (connection === 'open') {
+        this.state.status = 'connected';
+        this.state.qr = null;
+        this.state.phoneNumber = sock.user?.id ? jidNormalizedUser(sock.user.id).split('@')[0] : 'Connected';
+        console.log(`✅ WebBaileysEngine connected to WhatsApp as ${this.state.phoneNumber}`);
+      }
+
+      if (connection === 'close') {
+        const code = (lastDisconnect?.error as any)?.output?.statusCode;
+        const shouldReconnect = code !== DisconnectReason.loggedOut;
+        this.state.status = 'disconnected';
+        this.state.qr = null;
+
+        if (shouldReconnect) {
+          this.connectingPromise = null;
+          setTimeout(() => this.start().catch(() => {}), 3000);
+        } else {
+          this.connectingPromise = null;
+          setTimeout(() => {
+            void this.forceReset();
+          }, 1000);
+        }
+      }
+    });
+
+    // Standalone Inbound WhatsApp Message Listener with LID-to-Phone JID Resolver
+    sock.ev.on('messages.upsert', async (m) => {
+      if (m.type !== 'notify') return;
+
+      for (const msg of m.messages) {
+        if (msg.key.fromMe) continue;
+        let remoteJid = msg.key.remoteJid;
+        if (!remoteJid || remoteJid.endsWith('@g.us')) continue;
+
+        // Resolve LID (e.g. 121281454309615@lid or 108886128345223@lid) to real phone JID (@s.whatsapp.net)
+        if (remoteJid.endsWith('@lid') || (remoteJid.includes('1088') || remoteJid.includes('1212'))) {
+          const participant = msg.key.participant || (msg as any).participant;
+          if (participant && participant.endsWith('@s.whatsapp.net')) {
+            remoteJid = participant;
+          }
+        }
+
+        const text =
+          msg.message?.conversation ||
+          msg.message?.extendedTextMessage?.text ||
+          msg.message?.imageMessage?.caption ||
+          msg.message?.videoMessage?.caption ||
+          '';
+
+        if (!text.trim() && !msg.message?.audioMessage && !msg.message?.imageMessage) continue;
+        if (!remoteJid) continue;
+
+        const safeJid = remoteJid.replace(/[^a-zA-Z0-9._@-]/g, '_');
+        const filePath = path.join(this.sessionDir, `${safeJid}.jsonl`);
+
+        const msgObj = {
+          role: 'model', // patient / inbound message
+          content: text || '📎 [Incoming Media Attachment]',
+          ts: Date.now(),
+        };
+
+        fs.appendFileSync(filePath, JSON.stringify(msgObj) + '\n', 'utf8');
+        console.log(`📩 WebBaileysEngine received inbound message from ${remoteJid}: "${text.slice(0, 30)}..."`);
+
+        // Real-Time Inbound AI Intake Wizard Auto-Reply Handler
+        try {
+          const { IntakeWizard } = await import('@/lib/intake-wizard');
+          const wizard = new IntakeWizard();
+          const autoReply = await wizard.handleInbound(remoteJid, text);
+          if (autoReply && this.sock) {
+            await this.sock.sendMessage(remoteJid, { text: autoReply });
+
+            const replyObj = {
+              role: 'user', // assistant response to patient
+              content: autoReply,
+              ts: Date.now(),
+            };
+            fs.appendFileSync(filePath, JSON.stringify(replyObj) + '\n', 'utf8');
+            console.log(`🤖 WebBaileysEngine auto-replied to ${remoteJid}: "${autoReply.slice(0, 30)}..."`);
+          }
+        } catch (aiErr) {
+          console.error('Error processing auto-reply via IntakeWizard:', aiErr);
+        }
+      }
+    });
+  }
+}
+
+// Singleton Engine instance across Next.js requests
+const globalForWa = globalThis as unknown as { waEngine?: WebBaileysEngine };
+export const waEngine = globalForWa.waEngine ?? new WebBaileysEngine();
+if (process.env.NODE_ENV !== 'production') globalForWa.waEngine = waEngine;
+
+export async function getWaClientState(): Promise<WaState> {
+  return waEngine.getState();
+}
+
+export async function initWaPairing(): Promise<{ qr: string | null; status: string }> {
+  await waEngine.start();
+  for (let i = 0; i < 30; i++) {
+    const currentState = waEngine.getState();
+    if (currentState.qr || currentState.status === 'connected') {
+      return { qr: currentState.qr, status: currentState.status };
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  const finalState = waEngine.getState();
+  return { qr: finalState.qr, status: finalState.status };
+}
+
+export async function resetWaSession(): Promise<void> {
+  await waEngine.forceReset();
+}
+
+export async function sendWaTextMessage(to: string, text: string) {
+  return waEngine.sendTextMessage(to, text);
+}
+
+export async function sendWaAudioMessage(to: string, audioBuffer: Buffer, mimetype?: string, transcription?: string) {
+  return waEngine.sendAudioMessage(to, audioBuffer, mimetype, transcription);
+}
+
+export async function sendWaMediaMessage(to: string, fileBuffer: Buffer, mimetype: string, fileName?: string, caption?: string) {
+  return waEngine.sendMediaMessage(to, fileBuffer, mimetype, fileName, caption);
+}
