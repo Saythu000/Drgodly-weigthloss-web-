@@ -128,35 +128,37 @@ export default function OverviewPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Button 1: Open Pairing Window / Re-pair Gateway
+  // Button 1: Open Pairing Window / Re-pair Gateway with Auto-Polling
   const handleOpenPairing = async () => {
     setPairingLoading(true);
-    try {
-      const res = await fetch('/api/bot/pair', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        if (data.status === 'connected') {
-          applyStateTransitions('connected', data.phoneNumber);
-        } else if (data.qrImage) {
-          setQrImageDataUrl(data.qrImage);
-          applyStateTransitions('pairing');
-          setLogs((prev) => [
-            {
-              id: Date.now().toString(),
-              title: 'Live Meta Pairing Window Opened',
-              detail: 'Generated authentic WebSocket QR code. Scan with WhatsApp.',
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              status: 'info',
-            },
-            ...prev,
-          ]);
+    let attempts = 0;
+    const pollPairing = async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/bot/pair', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          if (data.status === 'connected') {
+            applyStateTransitions('connected', data.phoneNumber);
+            setPairingLoading(false);
+            return true;
+          } else if (data.qrImage) {
+            setQrImageDataUrl(data.qrImage);
+            applyStateTransitions('pairing');
+            setPairingLoading(false);
+            return true;
+          }
         }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setPairingLoading(false);
-    }
+      if (attempts < 15) {
+        setTimeout(pollPairing, 1500);
+      } else {
+        setPairingLoading(false);
+      }
+    };
+    await pollPairing();
   };
 
   // Button 2: Reset WhatsApp
