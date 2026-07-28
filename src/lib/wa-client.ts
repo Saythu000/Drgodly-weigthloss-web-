@@ -5,6 +5,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   DisconnectReason,
   jidNormalizedUser,
+  Browsers,
 } from '@whiskeysockets/baileys';
 import type { WASocket, ConnectionState } from '@whiskeysockets/baileys';
 
@@ -341,7 +342,7 @@ class WebBaileysEngine {
       version,
       auth: state,
       printQRInTerminal: false,
-      browser: ['DrGodly Web App', 'Chrome', '1.0.0'],
+      browser: Browsers.ubuntu('Chrome'),
       syncFullHistory: false,
       markOnlineOnConnect: true,
       defaultQueryTimeoutMs: 120000,
@@ -357,6 +358,7 @@ class WebBaileysEngine {
       if (qr) {
         this.state.status = 'awaitingPair';
         this.state.qr = qr;
+        console.log('✅ Baileys generated authentic QR code payload');
       }
 
       if (connection === 'open') {
@@ -369,8 +371,9 @@ class WebBaileysEngine {
       if (connection === 'close') {
         const code = (lastDisconnect?.error as any)?.output?.statusCode;
         const shouldReconnect = code !== DisconnectReason.loggedOut;
-        this.state.status = 'disconnected';
-        this.state.qr = null;
+        if (this.state.status !== 'awaitingPair') {
+          this.state.status = 'disconnected';
+        }
 
         if (shouldReconnect) {
           this.connectingPromise = null;
