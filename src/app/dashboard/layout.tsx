@@ -60,6 +60,13 @@ export default function DashboardLayout({
     return () => clearInterval(interval);
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {}
+    window.location.href = '/';
+  };
+
   return (
     <div className="flex h-screen bg-surface overflow-hidden">
       {/* Side Navigation Bar matching ForgeChat collapsible style */}
@@ -153,11 +160,13 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              <button className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
-                <span className="material-symbols-outlined">notifications</span>
-              </button>
-              <button className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
-                <span className="material-symbols-outlined">account_circle</span>
+              <button
+                onClick={handleLogout}
+                title="Sign Out"
+                className="px-3 py-1.5 bg-error/10 hover:bg-error/20 text-error border border-error/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">logout</span>
+                <span>Sign Out</span>
               </button>
             </div>
           </div>

@@ -5,16 +5,36 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('kalyan@drgodly.com');
-  const [password, setPassword] = useState('drgodly123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 600);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        router.push('/dashboard');
+        router.refresh();
+      } else {
+        setErrorMsg(data.error || 'Invalid Admin email or password');
+      }
+    } catch (err) {
+      setErrorMsg('Failed to connect to authentication server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,6 +48,13 @@ export default function LoginPage() {
           <p className="text-xs text-on-surface-variant/70 mt-1">Weight Loss Clinic Staff Dashboard</p>
         </div>
 
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-error/10 border border-error/30 rounded-xl flex items-center gap-3 text-error text-xs font-semibold animate-in fade-in duration-200">
+            <span className="material-symbols-outlined text-sm shrink-0">error</span>
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">Staff Email</label>
@@ -36,7 +63,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2.5 bg-surface-container-high border border-outline-variant/40 rounded-xl text-sm text-on-surface focus:outline-none focus:border-secondary transition-all"
-              placeholder="doctor@drgodly.com"
+              placeholder="admin@drgodly.com"
               required
             />
           </div>
@@ -56,7 +83,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-primary hover:bg-primary/90 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50 mt-6"
+            className="w-full py-3 bg-primary hover:bg-primary/90 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50 mt-6 cursor-pointer"
           >
             {loading ? (
               <>
