@@ -57,12 +57,15 @@ class WebBaileysEngine {
   async forceReset(): Promise<void> {
     if (this.sock) {
       try {
-        await this.sock.logout();
-      } catch {}
-      try {
+        // Prevent creds.update listener from re-writing creds.json during logout
         this.sock.ev.removeAllListeners('creds.update');
         this.sock.ev.removeAllListeners('connection.update');
         this.sock.ev.removeAllListeners('messages.upsert');
+      } catch {}
+      try {
+        await this.sock.logout();
+      } catch {}
+      try {
         this.sock.ws?.close();
         this.sock.end(undefined);
       } catch {}
@@ -71,11 +74,22 @@ class WebBaileysEngine {
     this.connectingPromise = null;
     if (fs.existsSync(this.authDir)) {
       try {
-        fs.rmSync(this.authDir, { recursive: true, force: true });
-      } catch {}
+        const entries = fs.readdirSync(this.authDir);
+        for (const entry of entries) {
+          const entryPath = path.join(this.authDir, entry);
+          try {
+            fs.rmSync(entryPath, { recursive: true, force: true });
+          } catch (e) {
+            console.error(`Failed to remove auth entry ${entryPath}:`, e);
+          }
+        }
+      } catch (err) {
+        console.error('Error clearing auth directory contents:', err);
+      }
       try {
-        fs.mkdirSync(this.authDir, { recursive: true });
-        fs.mkdirSync(this.sessionDir, { recursive: true });
+        if (!fs.existsSync(this.sessionDir)) {
+          fs.mkdirSync(this.sessionDir, { recursive: true });
+        }
       } catch {}
     }
     this.state = {
