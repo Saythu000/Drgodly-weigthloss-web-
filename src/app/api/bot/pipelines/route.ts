@@ -96,7 +96,7 @@ function readJsonFile(filePath: string, defaultVal: any) {
   if (fs.existsSync(filePath)) {
     try {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     } catch (e) {}
   }
   return defaultVal;
@@ -432,6 +432,13 @@ export async function POST(request: Request) {
       deals = deals.filter((d: any) => d.id !== targetId);
       writeJsonFile(DEALS_FILE, deals);
       return NextResponse.json({ success: true, message: 'Deal deleted successfully' });
+    }
+
+    // Action 9: Clear All Deals
+    if (action === 'clear-all-deals') {
+      deals = [];
+      writeJsonFile(DEALS_FILE, []);
+      return NextResponse.json({ success: true, message: 'All deals cleared successfully' });
     }
 
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });

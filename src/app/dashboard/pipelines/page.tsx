@@ -258,6 +258,28 @@ export default function PipelinesPage() {
                   <div
                     onClick={async () => {
                       setPipeMenuOpen(false);
+                      if (!window.confirm('Wipe out all mock deals in this pipeline?')) return;
+                      try {
+                        const res = await fetch('/api/bot/pipelines', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ action: 'clear-all-deals' }),
+                        });
+                        const data = await res.json();
+                        if (data.success) loadPipelineData();
+                        else alert(data.error || 'Clear failed');
+                      } catch (e) {
+                        alert('Clear failed');
+                      }
+                    }}
+                    className="px-3.5 py-2 text-xs text-amber-700 hover:bg-amber-500/10 cursor-pointer flex items-center gap-2 font-medium border-t border-outline-variant/20 mt-1"
+                  >
+                    <span className="material-symbols-outlined text-sm">cleaning_services</span>
+                    <span>Clear all mock deals</span>
+                  </div>
+                  <div
+                    onClick={async () => {
+                      setPipeMenuOpen(false);
                       if (!selectedPipeline) return;
                       if (!window.confirm(`Delete pipeline "${selectedPipeline.name}" and all its deals?`)) return;
                       try {
