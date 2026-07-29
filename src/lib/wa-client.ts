@@ -93,11 +93,10 @@ class WebBaileysEngine {
       } catch {}
     }
     this.state = {
-      status: 'awaitingPair',
+      status: 'idle',
       qr: null,
       phoneNumber: null,
     };
-    await this.start();
   }
 
   // Standalone Outbound WhatsApp Text Dispatcher
@@ -487,10 +486,16 @@ export async function getWaClientState(): Promise<WaState> {
 
 export async function initWaPairing(): Promise<{ qr: string | null; status: string }> {
   const state = waEngine.getState();
-  if (state.status === 'idle' || state.status === 'disconnected' || (!state.qr && state.status !== 'connected')) {
+  if (state.status === 'connected') {
+    return { qr: null, status: 'connected' };
+  }
+  if (state.qr && state.status === 'awaitingPair') {
+    return { qr: state.qr, status: 'awaitingPair' };
+  }
+  if (state.status === 'idle' || state.status === 'disconnected' || !state.qr) {
     await waEngine.start();
   }
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 150; i++) {
     const currentState = waEngine.getState();
     if (currentState.qr || currentState.status === 'connected') {
       return { qr: currentState.qr, status: currentState.status };
