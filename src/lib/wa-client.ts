@@ -342,13 +342,8 @@ class WebBaileysEngine {
 
   private async connect(): Promise<void> {
     const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
-    let version: [number, number, number] = [2, 3000, 1015901307];
-    try {
-      const fetched = await fetchLatestBaileysVersion();
-      version = fetched.version;
-    } catch (e) {
-      console.warn('Using default Baileys version fallback:', e);
-    }
+    // Hardcoded Meta WhatsApp Web version tuple to prevent network fetch latency inside containers
+    const version: [number, number, number] = [2, 3000, 1015901307];
 
     this.state.status = 'starting';
 
@@ -478,12 +473,10 @@ export async function getWaClientState(): Promise<WaState> {
 
 export async function initWaPairing(): Promise<{ qr: string | null; status: string }> {
   const state = waEngine.getState();
-  if (state.status === 'idle' || state.status === 'disconnected' || !state.qr) {
-    if (state.status !== 'connected') {
-      await waEngine.start();
-    }
+  if (state.status === 'idle' || state.status === 'disconnected' || (!state.qr && state.status !== 'connected')) {
+    await waEngine.start();
   }
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 120; i++) {
     const currentState = waEngine.getState();
     if (currentState.qr || currentState.status === 'connected') {
       return { qr: currentState.qr, status: currentState.status };
