@@ -25,8 +25,8 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        router.push('/dashboard');
-        router.refresh();
+        window.location.href = '/dashboard';
+        return;
       } else {
         setErrorMsg(data.error || 'Invalid Admin email or password');
       }

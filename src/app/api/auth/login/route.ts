@@ -15,12 +15,12 @@ export async function POST(req: Request) {
     ) {
       const response = NextResponse.json({ success: true, message: 'Authenticated successfully' });
 
-      // Set secure HTTP-only session cookie valid for 30 days
+      // Set HTTP-only session cookie valid for 30 days
       response.cookies.set({
         name: 'drgodly_session',
         value: 'authenticated_admin_session',
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
         sameSite: 'lax',
         path: '/',
         maxAge: 30 * 24 * 60 * 60, // 30 days
