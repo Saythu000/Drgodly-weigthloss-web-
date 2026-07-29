@@ -164,6 +164,8 @@ export default function OverviewPage() {
   // Button 2: Reset WhatsApp
   const handleResetWhatsApp = async () => {
     try {
+      setPairingLoading(true);
+      setQrImageDataUrl(null);
       const res = await fetch('/api/bot/reset', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
@@ -172,19 +174,20 @@ export default function OverviewPage() {
           {
             id: Date.now().toString(),
             title: 'Gateway Reset',
-            detail: 'Session credentials cleared. Launching new pairing modal...',
+            detail: 'WhatsApp session unlinked. Re-initializing gateway...',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             status: 'warning',
           },
           ...prev,
         ]);
-        // Auto-launch pairing modal to generate and display the new QR Code
+        // Auto-launch pairing modal after gateway re-initializes
         setTimeout(() => {
           handleOpenPairing();
-        }, 300);
+        }, 800);
       }
     } catch (e) {
       console.error(e);
+      setPairingLoading(false);
     }
   };
 

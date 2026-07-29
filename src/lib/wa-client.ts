@@ -59,7 +59,8 @@ class WebBaileysEngine {
       try {
         this.sock.ev.removeAllListeners('creds.update');
         this.sock.ev.removeAllListeners('connection.update');
-        this.sock.ws.close();
+        this.sock.ev.removeAllListeners('messages.upsert');
+        this.sock.ws?.close();
         this.sock.end(undefined);
       } catch {}
       this.sock = null;
@@ -470,8 +471,13 @@ export async function getWaClientState(): Promise<WaState> {
 }
 
 export async function initWaPairing(): Promise<{ qr: string | null; status: string }> {
-  await waEngine.start();
-  for (let i = 0; i < 150; i++) {
+  const state = waEngine.getState();
+  if (state.status === 'idle' || state.status === 'disconnected' || !state.qr) {
+    if (state.status !== 'connected') {
+      await waEngine.start();
+    }
+  }
+  for (let i = 0; i < 60; i++) {
     const currentState = waEngine.getState();
     if (currentState.qr || currentState.status === 'connected') {
       return { qr: currentState.qr, status: currentState.status };
