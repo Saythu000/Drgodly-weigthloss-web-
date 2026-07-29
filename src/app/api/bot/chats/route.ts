@@ -128,44 +128,6 @@ export async function GET() {
     // Sort by latest message timestamp
     chats.sort((a, b) => b.timestamp - a.timestamp);
 
-    // Fallback default sample chats if no active sessions exist yet
-    if (chats.length === 0) {
-      chats.push(
-        {
-          id: 'chat-1',
-          jid: '916309758257@s.whatsapp.net',
-          name: 'Sarah Jenkins',
-          phone: '+1 (555) 123-4567',
-          state: 'Texas (TX)',
-          status: 'Doctor Review',
-          lastMsg: 'I am interested in starting the Semaglutide GLP-1 program.',
-          time: '10:14 AM',
-          timestamp: Date.now(),
-          aiActive: true,
-          avatar: 'SJ',
-          bmi: '31.4 (Class I Obesity)',
-          allergies: 'Penicillin',
-          intake: null,
-        },
-        {
-          id: 'chat-2',
-          jid: '15559876543@s.whatsapp.net',
-          name: 'Michael Davis',
-          phone: '+1 (555) 987-6543',
-          state: 'California (CA)',
-          status: 'Healthy',
-          lastMsg: 'When will Dr. Kalyan approve my lab report refill?',
-          time: '09:30 AM',
-          timestamp: Date.now() - 3600000,
-          aiActive: false,
-          avatar: 'MD',
-          bmi: '29.8 (Overweight)',
-          allergies: 'None',
-          intake: null,
-        }
-      );
-    }
-
     return NextResponse.json({
       success: true,
       chats,
