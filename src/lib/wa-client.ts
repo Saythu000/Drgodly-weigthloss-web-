@@ -54,13 +54,24 @@ class WebBaileysEngine {
   async forceReset(): Promise<void> {
     if (this.sock) {
       try {
+        await this.sock.logout();
+      } catch {}
+      try {
+        this.sock.ev.removeAllListeners('creds.update');
+        this.sock.ev.removeAllListeners('connection.update');
         this.sock.ws.close();
+        this.sock.end(undefined);
       } catch {}
       this.sock = null;
     }
+    this.connectingPromise = null;
     if (fs.existsSync(this.authDir)) {
       try {
         fs.rmSync(this.authDir, { recursive: true, force: true });
+      } catch {}
+      try {
+        fs.mkdirSync(this.authDir, { recursive: true });
+        fs.mkdirSync(this.sessionDir, { recursive: true });
       } catch {}
     }
     this.state = {
@@ -68,7 +79,6 @@ class WebBaileysEngine {
       qr: null,
       phoneNumber: null,
     };
-    this.connectingPromise = null;
     await this.start();
   }
 
