@@ -172,12 +172,16 @@ export default function OverviewPage() {
           {
             id: Date.now().toString(),
             title: 'Gateway Reset',
-            detail: 'Session credentials cleared. Connection reset.',
+            detail: 'Session credentials cleared. Launching new pairing modal...',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             status: 'warning',
           },
           ...prev,
         ]);
+        // Auto-launch pairing modal to generate and display the new QR Code
+        setTimeout(() => {
+          handleOpenPairing();
+        }, 300);
       }
     } catch (e) {
       console.error(e);
