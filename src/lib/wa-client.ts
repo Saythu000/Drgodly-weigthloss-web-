@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import pino from 'pino';
 import makeWASocket, {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
@@ -27,8 +28,10 @@ class WebBaileysEngine {
   private connectingPromise: Promise<void> | null = null;
 
   constructor() {
-    this.authDir = path.resolve(process.cwd(), '.openclaw-local');
-    this.sessionDir = path.resolve(process.cwd(), '.openclaw-local', 'sessions');
+    const dataDir = process.env.OPENCLAW_DATA_DIR || 
+      (fs.existsSync('/app/.openclaw-local') ? '/app/.openclaw-local' : path.resolve(process.cwd(), '.openclaw-local'));
+    this.authDir = dataDir;
+    this.sessionDir = path.join(dataDir, 'sessions');
 
     if (!fs.existsSync(this.authDir)) {
       fs.mkdirSync(this.authDir, { recursive: true });
@@ -349,14 +352,17 @@ class WebBaileysEngine {
 
     this.state.status = 'starting';
 
+    const logger = pino({ level: 'silent' });
+
     const sock = makeWASocket({
       version,
       auth: state,
       printQRInTerminal: false,
-      browser: Browsers.ubuntu('Chrome'),
+      browser: ['DrGodly Web', 'Chrome', '1.0.0'],
+      logger: logger as any,
       syncFullHistory: false,
       markOnlineOnConnect: true,
-      defaultQueryTimeoutMs: 120000,
+      defaultQueryTimeoutMs: 60000,
     });
 
     this.sock = sock;
