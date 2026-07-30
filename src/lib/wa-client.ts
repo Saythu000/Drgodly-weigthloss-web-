@@ -55,6 +55,7 @@ class WebBaileysEngine {
   }
 
   async forceReset(): Promise<void> {
+    console.log('[WA DEBUG] 🛠️ forceReset() called. Cleaning active socket and credentials directory...');
     if (this.sock) {
       try {
         // Prevent creds.update listener from re-writing creds.json during logout
@@ -79,6 +80,7 @@ class WebBaileysEngine {
           const entryPath = path.join(this.authDir, entry);
           try {
             fs.rmSync(entryPath, { recursive: true, force: true });
+            console.log(`[WA DEBUG] 🗑️ Deleted auth file: ${entry}`);
           } catch (e) {
             console.error(`Failed to remove auth entry ${entryPath}:`, e);
           }
@@ -97,6 +99,7 @@ class WebBaileysEngine {
       qr: null,
       phoneNumber: null,
     };
+    console.log('[WA DEBUG] 🛠️ forceReset() complete. Engine state is now idle.');
   }
 
   // Standalone Outbound WhatsApp Text Dispatcher
@@ -354,6 +357,7 @@ class WebBaileysEngine {
   }
 
   private async connect(): Promise<void> {
+    console.log('[WA DEBUG] 🔌 connect() initiated. Auth Dir:', this.authDir);
     const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
     // Hardcoded Meta WhatsApp Web version tuple to prevent network fetch latency inside containers
     const version: [number, number, number] = [2, 3000, 1015901307];
@@ -362,6 +366,7 @@ class WebBaileysEngine {
 
     const logger = pino({ level: 'silent' });
 
+    console.log('[WA DEBUG] 🔌 Creating Baileys WASocket...');
     const sock = makeWASocket({
       version,
       auth: state,
@@ -379,6 +384,12 @@ class WebBaileysEngine {
 
     sock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
       const { connection, lastDisconnect, qr } = update;
+      console.log('[WA DEBUG] 📡 connection.update ->', JSON.stringify({
+        connection: connection || null,
+        hasQr: !!qr,
+        qrPreview: qr ? `${qr.slice(0, 15)}... (len: ${qr.length})` : null,
+        lastDisconnect: lastDisconnect?.error ? (lastDisconnect.error as any)?.message || String(lastDisconnect.error) : null,
+      }));
 
       if (qr) {
         this.state.status = 'awaitingPair';
@@ -396,6 +407,7 @@ class WebBaileysEngine {
       if (connection === 'close') {
         const code = (lastDisconnect?.error as any)?.output?.statusCode;
         const shouldReconnect = code !== DisconnectReason.loggedOut;
+        console.log(`[WA DEBUG] 🛑 Connection closed. Disconnect code: ${code}, shouldReconnect: ${shouldReconnect}`);
         if (this.state.status !== 'awaitingPair') {
           this.state.status = 'disconnected';
         }
@@ -486,23 +498,33 @@ export async function getWaClientState(): Promise<WaState> {
 
 export async function initWaPairing(): Promise<{ qr: string | null; status: string }> {
   const state = waEngine.getState();
+  console.log('[WA DEBUG] 📲 initWaPairing() invoked. Current State:', JSON.stringify(state));
+
   if (state.status === 'connected') {
+    console.log('[WA DEBUG] 📲 Engine is already connected. Returning status: connected');
     return { qr: null, status: 'connected' };
   }
   if (state.qr && state.status === 'awaitingPair') {
+    console.log('[WA DEBUG] 📲 Cached QR code exists. Returning cached QR payload.');
     return { qr: state.qr, status: 'awaitingPair' };
   }
   if (state.status === 'idle' || state.status === 'disconnected' || !state.qr) {
+    console.log('[WA DEBUG] 📲 Starting engine from initWaPairing...');
     await waEngine.start();
   }
   for (let i = 0; i < 150; i++) {
     const currentState = waEngine.getState();
+    if (i % 20 === 0) {
+      console.log(`[WA DEBUG] ⏳ Polling iteration ${i}/150 -> State:`, JSON.stringify(currentState));
+    }
     if (currentState.qr || currentState.status === 'connected') {
+      console.log(`[WA DEBUG] ✅ Pairing poll succeeded on iteration ${i}! hasQR: ${!!currentState.qr}, status: ${currentState.status}`);
       return { qr: currentState.qr, status: currentState.status };
     }
     await new Promise((r) => setTimeout(r, 100));
   }
   const finalState = waEngine.getState();
+  console.log('[WA DEBUG] ⚠️ Pairing poll timed out after 15s. Final State:', JSON.stringify(finalState));
   return { qr: finalState.qr, status: finalState.status };
 }
 

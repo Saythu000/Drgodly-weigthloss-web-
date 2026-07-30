@@ -6,7 +6,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
+    console.log('[WA DEBUG] 🌐 POST /api/bot/pair endpoint hit.');
     const { qr, status } = await initWaPairing();
+    console.log('[WA DEBUG] 🌐 initWaPairing returned -> status:', status, 'hasQr:', !!qr);
 
     if (qr) {
       // Convert Meta's live authentic Baileys QR token into a base64 PNG data URL
@@ -19,6 +21,7 @@ export async function POST() {
           light: '#ffffff',
         },
       });
+      console.log('[WA DEBUG] 🖼️ QRCode.toDataURL() generated Data URL string of length:', qrImageDataUrl.length);
 
       return NextResponse.json({
         success: true,
@@ -35,7 +38,7 @@ export async function POST() {
       message: status === 'connected' ? 'WhatsApp is already connected!' : 'Initializing connection...',
     });
   } catch (error) {
-    console.error('Failed to initialize Baileys pairing:', error);
+    console.error('[WA DEBUG] ❌ Failed to initialize Baileys pairing:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to establish live Meta WebSocket pairing' },
       { status: 500 }
