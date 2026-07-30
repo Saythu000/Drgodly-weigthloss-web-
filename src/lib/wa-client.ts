@@ -359,8 +359,14 @@ class WebBaileysEngine {
   private async connect(): Promise<void> {
     console.log('[WA DEBUG] 🔌 connect() initiated. Auth Dir:', this.authDir);
     const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
-    // Hardcoded Meta WhatsApp Web version tuple to prevent network fetch latency inside containers
-    const version: [number, number, number] = [2, 3000, 1015901307];
+    let version: [number, number, number] = [2, 3000, 1020000000];
+    try {
+      const latest = await fetchLatestBaileysVersion();
+      version = latest.version;
+      console.log(`[WA DEBUG] 🌐 Fetched latest Baileys version: ${version.join('.')}`);
+    } catch (vErr) {
+      console.log('[WA DEBUG] ⚠️ Could not fetch latest version, using default:', version.join('.'));
+    }
 
     this.state.status = 'starting';
 
