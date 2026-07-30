@@ -366,7 +366,7 @@ class WebBaileysEngine {
       version,
       auth: state,
       printQRInTerminal: false,
-      browser: ['DrGodly Web', 'Chrome', '1.0.0'],
+      browser: Browsers.ubuntu('Chrome'),
       logger: logger as any,
       syncFullHistory: false,
       markOnlineOnConnect: true,
@@ -475,10 +475,10 @@ class WebBaileysEngine {
   }
 }
 
-// Singleton Engine instance across Next.js requests
+// ponytail: global singleton engine preserved across all Next.js API requests in dev & prod
 const globalForWa = globalThis as unknown as { waEngine?: WebBaileysEngine };
 export const waEngine = globalForWa.waEngine ?? new WebBaileysEngine();
-if (process.env.NODE_ENV !== 'production') globalForWa.waEngine = waEngine;
+globalForWa.waEngine = waEngine;
 
 export async function getWaClientState(): Promise<WaState> {
   return waEngine.getState();
