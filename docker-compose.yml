@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   drgodly-web:
+    image: ghcr.io/saythu000/drgodly-web:latest
     build:
       context: .
       dockerfile: Dockerfile

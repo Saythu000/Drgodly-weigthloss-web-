@@ -30,10 +30,10 @@ DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN%%/*}"
 
 echo "✅ Target Domain: $DOMAIN"
 
-# 3. Build & Deploy Containers (Clean No-Cache Build)
-echo "🚀 Building and launching DrGodly Web Containers for $DOMAIN..."
-DOMAIN="$DOMAIN" "${COMPOSE[@]}" build --no-cache
-DOMAIN="$DOMAIN" "${COMPOSE[@]}" up -d
+# 3. Pull or Build & Deploy Containers
+echo "🚀 Deploying DrGodly Web Containers for $DOMAIN..."
+DOMAIN="$DOMAIN" "${COMPOSE[@]}" pull || DOMAIN="$DOMAIN" "${COMPOSE[@]}" build --no-cache
+DOMAIN="$DOMAIN" "${COMPOSE[@]}" up -d --force-recreate
 
 echo "============================================================"
 echo "🎉 SUCCESS: DrGodly Web is deployed and running on Hetzner CX23!"
