@@ -221,13 +221,16 @@ export class IntakeWizard {
     const pending = pendingStore[cleanPhone];
     const cleanText = text.trim().toLowerCase();
 
+    const isPartnershipKw = ['partner', 'partnership', 'collaboration', 'proposal', 'vendor', 'b2b', 'tie up', 'tie-up', '2', 'two'].some((k) => cleanText.includes(k));
+    const isRecruitmentKw = ['doctor', 'recruit', 'recruitment', 'job', 'hiring', 'vacancy', 'career', 'resume', 'cv', 'medical staff', '3', 'three'].some((k) => cleanText.includes(k));
+
     // ponytail: direct partnership routing
-    if (detectedCategory === 'PARTNERSHIP' || pending?.type === 'PARTNERSHIP') {
+    if (detectedCategory === 'PARTNERSHIP' || pending?.type === 'PARTNERSHIP' || (!pending && isPartnershipKw)) {
       return this.handlePartnership(cleanPhone, text, pendingStore);
     }
 
     // ponytail: direct recruitment routing
-    if (detectedCategory === 'RECRUITMENT' || pending?.type === 'RECRUITMENT') {
+    if (detectedCategory === 'RECRUITMENT' || pending?.type === 'RECRUITMENT' || (!pending && isRecruitmentKw)) {
       return this.handleRecruitment(cleanPhone, text, pendingStore);
     }
 

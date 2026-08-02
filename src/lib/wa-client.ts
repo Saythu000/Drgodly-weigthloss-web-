@@ -496,7 +496,7 @@ class WebBaileysEngine {
           // 🩺 CUSTOMER WEIGHT LOSS / INTAKE / CATEGORY HANDLER
           const { IntakeWizard } = await import('@/lib/intake-wizard');
           const wizard = new IntakeWizard();
-          const autoReply = await wizard.handleInbound(remoteJid, text);
+          const autoReply = await wizard.handleInbound(remoteJid, text, intentResult.category);
           if (autoReply && this.sock) {
             await this.sock.sendMessage(remoteJid, { text: autoReply });
 
