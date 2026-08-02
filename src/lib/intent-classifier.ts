@@ -85,15 +85,23 @@ export async function classifyIntent(text: string): Promise<IntentResult> {
 
   // ponytail: direct keyword rule fallback (YAGNI offline safety)
   const lower = clean.toLowerCase();
-  if (['weight', 'ozempic', 'wegovy', 'rybelsus', 'mounjaro', 'glp', 'bmi', 'consultation', 'doctor', 'intake', '1', 'one'].some((k) => lower.includes(k))) {
-    return { category: 'CUSTOMER_WEIGHT_LOSS', confidence: 0.9, reasoning: 'Rule match weight loss' };
+
+  // 1. Check RECRUITMENT first (Doctor/Medical hiring, jobs, applications)
+  if (['job', 'career', 'recruit', 'vacancy', 'hiring', 'nurse', 'resume', 'cv', 'doctor', 'physician', 'apply', 'joining', 'medical staff', '3', 'three'].some((k) => lower.includes(k))) {
+    return { category: 'RECRUITMENT', confidence: 0.9, reasoning: 'Rule match recruitment' };
   }
+
+  // 2. Check PARTNERSHIP second (B2B, business tie-ups, vendors, proposals)
   if (['partner', 'collaboration', 'vendor', 'b2b', 'proposal', '2', 'two'].some((k) => lower.includes(k))) {
     return { category: 'PARTNERSHIP', confidence: 0.9, reasoning: 'Rule match partnership' };
   }
-  if (['job', 'career', 'recruit', 'vacancy', 'hiring', 'nurse', 'resume', 'cv', '3', 'three'].some((k) => lower.includes(k))) {
-    return { category: 'RECRUITMENT', confidence: 0.9, reasoning: 'Rule match recruitment' };
+
+  // 3. Check CUSTOMER_WEIGHT_LOSS third (Weight loss, GLP-1, BMI, patient consult)
+  if (['weight', 'ozempic', 'wegovy', 'rybelsus', 'mounjaro', 'glp', 'bmi', 'consultation', 'doctor consult', 'doctor appointment', 'intake', '1', 'one'].some((k) => lower.includes(k))) {
+    return { category: 'CUSTOMER_WEIGHT_LOSS', confidence: 0.9, reasoning: 'Rule match weight loss' };
   }
+
+  // 4. Check GENERAL_CLINIC_QUERY fourth (Timing, address, location)
   if (['address', 'location', 'hours', 'timing', 'where'].some((k) => lower.includes(k))) {
     return { category: 'GENERAL_CLINIC_QUERY', confidence: 0.85, reasoning: 'Rule match general query' };
   }
