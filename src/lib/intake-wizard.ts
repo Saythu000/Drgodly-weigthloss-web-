@@ -328,30 +328,46 @@ export class IntakeWizard {
     return `✅ *Proposal Submitted!*\n\nThank you ${pending.data.name}. Your proposal has been submitted to Dr. Kalyan and our clinic team. We will review and contact you shortly. 🤝`;
   }
 
-  // ponytail: 2-step recruitment collector
+  // ponytail: 3-step doctor recruitment collector
   private async handleRecruitment(cleanPhone: string, text: string, pendingStore: Record<string, any>): Promise<string> {
     const pending = pendingStore[cleanPhone];
     if (!pending || pending.type !== 'RECRUITMENT') {
-      pendingStore[cleanPhone] = { type: 'RECRUITMENT', step: 'NAME', data: {}, updatedAt: new Date().toISOString() };
+      pendingStore[cleanPhone] = { type: 'RECRUITMENT', step: 'NAME_QUALIFICATION', data: {}, updatedAt: new Date().toISOString() };
       writeJson(PENDING_FILE, pendingStore);
-      return "💼 *Careers & Recruitment*\n\nThank you for your interest! What is your full name and the position you are applying for?";
+      return "🩺 *Doctor & Medical Staff Recruitment*\n\nThank you for reaching out to DrGodly Telehealth Clinic! What is your full name and medical degree/specialization? (e.g., Dr. Ananya Sharma, MD Internal Medicine / MBBS)";
     }
 
-    if (pending.step === 'NAME') {
+    if (pending.step === 'NAME_QUALIFICATION') {
       pending.data.name = text.trim();
-      pending.step = 'DETAILS';
+      pending.step = 'REGISTRATION_EXPERIENCE';
       pendingStore[cleanPhone] = pending;
       writeJson(PENDING_FILE, pendingStore);
-      return `Thank you ${pending.data.name}! Please share a brief summary of your qualifications or paste your resume/CV overview.`;
+      return `Thank you ${pending.data.name}! What is your Medical Council Registration Number and total years of clinical/telehealth experience?`;
+    }
+
+    if (pending.step === 'REGISTRATION_EXPERIENCE') {
+      pending.data.regExperience = text.trim();
+      pending.step = 'AVAILABILITY_RESUME';
+      pendingStore[cleanPhone] = pending;
+      writeJson(PENDING_FILE, pendingStore);
+      return `Great! Please share your consultation availability (Full-time / Part-time) along with a brief summary of your CV or LinkedIn profile link.`;
     }
 
     const recruitment = readJson<any[]>(RECRUITMENT_FILE, []);
-    recruitment.unshift({ phone: `+${cleanPhone}`, name: pending.data.name, details: text.trim(), status: 'NEW', createdAt: new Date().toISOString() });
+    recruitment.unshift({
+      phone: `+${cleanPhone}`,
+      name: pending.data.name,
+      registrationExperience: pending.data.regExperience,
+      details: text.trim(),
+      role: 'Doctor / Medical Specialist',
+      status: 'NEW',
+      createdAt: new Date().toISOString(),
+    });
     writeJson(RECRUITMENT_FILE, recruitment);
 
     delete pendingStore[cleanPhone];
     writeJson(PENDING_FILE, pendingStore);
-    return `✅ *Application Received!*\n\nThank you ${pending.data.name}. Your job application has been logged with HR. We will review your profile and contact you shortly. 💼`;
+    return `✅ *Doctor Application Received!*\n\nThank you ${pending.data.name}! Your medical credentials and application have been submitted to Dr. Kalyan and our clinical operations team. We will review your profile and contact you shortly. 🩺`;
   }
 
   async startIntake(cleanPhone: string): Promise<string> {
