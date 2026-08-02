@@ -214,6 +214,16 @@ function getRazorpayLink(): string {
   return process.env.RAZORPAY_PAYMENT_LINK || 'https://rzp.io/rzp/7Ei89Qg8';
 }
 
+export function hasActiveSession(fromPhone: string): boolean {
+  try {
+    const cleanPhone = fromPhone.replace(/\D/g, '');
+    const pendingStore = readJson<Record<string, any>>(PENDING_FILE, {});
+    return !!pendingStore[cleanPhone];
+  } catch (e) {
+    return false;
+  }
+}
+
 export class IntakeWizard {
   async handleInbound(fromPhone: string, text: string, detectedCategory?: string): Promise<string | null> {
     const cleanPhone = fromPhone.replace(/\D/g, '');

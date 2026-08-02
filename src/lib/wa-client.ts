@@ -471,19 +471,22 @@ class WebBaileysEngine {
 
         // Real-Time Inbound AI Intent Classifier & Gating System (Phase 1)
         try {
+          const { IntakeWizard, hasActiveSession } = await import('@/lib/intake-wizard');
+          const inSession = hasActiveSession(remoteJid);
+
           const { classifyIntent } = await import('@/lib/intent-classifier');
           const intentResult = await classifyIntent(text);
 
-          console.log(`🤖 Intent Classifier for ${remoteJid}: category="${intentResult.category}", confidence=${intentResult.confidence}, reasoning="${intentResult.reasoning}"`);
+          console.log(`🤖 Intent Classifier for ${remoteJid}: category="${intentResult.category}", confidence=${intentResult.confidence}, reasoning="${intentResult.reasoning}" (inSession=${inSession})`);
 
-          // ⛔ SILENT SAFEGUARD FOR PERSONAL / PRIVATE CHATS
-          if (intentResult.category === 'PERSONAL_PRIVATE_CHAT') {
+          // ⛔ SILENT SAFEGUARD FOR PERSONAL / PRIVATE CHATS (only when NOT in active intake)
+          if (!inSession && intentResult.category === 'PERSONAL_PRIVATE_CHAT') {
             console.log(`🤐 [SILENT SAFEGUARD ACTIVATED] Contact ${remoteJid} classified as PERSONAL_PRIVATE_CHAT. Bot is SILENT.`);
             continue;
           }
 
-          // ℹ️ GENERAL CLINIC QUERY HANDLER
-          if (intentResult.category === 'GENERAL_CLINIC_QUERY') {
+          // ℹ️ GENERAL CLINIC QUERY HANDLER (only when NOT in active intake)
+          if (!inSession && intentResult.category === 'GENERAL_CLINIC_QUERY') {
             const clinicReply = "Hello! Thank you for reaching out to DrGodly Telehealth. 🩺\n\n📍 Center: DrGodly Telehealth Center\n⏰ Working Hours: Monday - Saturday (9:00 AM - 8:00 PM IST)\n🩺 Specialization: GLP-1 Weight Loss Telehealth Consultation & Assessment\n\nIf you would like to book a doctor appointment for weight loss, please reply '1' or 'Weight Loss' to begin!";
             if (this.sock) {
               await this.sock.sendMessage(remoteJid, { text: clinicReply });
@@ -493,8 +496,7 @@ class WebBaileysEngine {
             continue;
           }
 
-          // 🩺 CUSTOMER WEIGHT LOSS / INTAKE / CATEGORY HANDLER
-          const { IntakeWizard } = await import('@/lib/intake-wizard');
+          // 🩺 CUSTOMER WEIGHT LOSS / RECRUITMENT / PARTNERSHIP INTAKE HANDLER
           const wizard = new IntakeWizard();
           const autoReply = await wizard.handleInbound(remoteJid, text, intentResult.category);
           if (autoReply && this.sock) {
