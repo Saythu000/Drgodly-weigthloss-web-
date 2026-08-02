@@ -469,8 +469,31 @@ class WebBaileysEngine {
         fs.appendFileSync(filePath, JSON.stringify(msgObj) + '\n', 'utf8');
         console.log(`📩 WebBaileysEngine received inbound message from ${remoteJid}: "${text.slice(0, 30)}..."`);
 
-        // Real-Time Inbound AI Intake Wizard Auto-Reply Handler
+        // Real-Time Inbound AI Intent Classifier & Gating System (Phase 1)
         try {
+          const { classifyIntent } = await import('@/lib/intent-classifier');
+          const intentResult = await classifyIntent(text);
+
+          console.log(`🤖 Intent Classifier for ${remoteJid}: category="${intentResult.category}", confidence=${intentResult.confidence}, reasoning="${intentResult.reasoning}"`);
+
+          // ⛔ SILENT SAFEGUARD FOR PERSONAL / PRIVATE CHATS
+          if (intentResult.category === 'PERSONAL_PRIVATE_CHAT') {
+            console.log(`🤐 [SILENT SAFEGUARD ACTIVATED] Contact ${remoteJid} classified as PERSONAL_PRIVATE_CHAT. Bot is SILENT.`);
+            continue;
+          }
+
+          // ℹ️ GENERAL CLINIC QUERY HANDLER
+          if (intentResult.category === 'GENERAL_CLINIC_QUERY') {
+            const clinicReply = "Hello! Thank you for reaching out to DrGodly Telehealth Clinic. 🏥\n\n📍 Clinic Address: DrGodly Telehealth Center\n⏰ Working Hours: Monday - Saturday (9:00 AM - 8:00 PM IST)\n🩺 Specialization: GLP-1 Weight Loss Telehealth Consultation & Assessment\n\nIf you would like to book a doctor appointment for weight loss, please reply '1' or 'Weight Loss' to begin!";
+            if (this.sock) {
+              await this.sock.sendMessage(remoteJid, { text: clinicReply });
+              const replyObj = { role: 'user', content: clinicReply, ts: Date.now() };
+              fs.appendFileSync(filePath, JSON.stringify(replyObj) + '\n', 'utf8');
+            }
+            continue;
+          }
+
+          // 🩺 CUSTOMER WEIGHT LOSS / INTAKE / CATEGORY HANDLER
           const { IntakeWizard } = await import('@/lib/intake-wizard');
           const wizard = new IntakeWizard();
           const autoReply = await wizard.handleInbound(remoteJid, text);
@@ -486,7 +509,7 @@ class WebBaileysEngine {
             console.log(`🤖 WebBaileysEngine auto-replied to ${remoteJid}: "${autoReply.slice(0, 30)}..."`);
           }
         } catch (aiErr) {
-          console.error('Error processing auto-reply via IntakeWizard:', aiErr);
+          console.error('Error processing auto-reply via Intent Classifier:', aiErr);
         }
       }
     });

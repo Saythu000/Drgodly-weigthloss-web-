@@ -25,7 +25,12 @@ model Lead {
   bmi                 Float?
   healthFlags         Json?
   preferredMedication String?
-  intakeStatus        String   @default("IN_PROGRESS") // IN_PROGRESS, DOCTOR_REVIEW, APPROVED, REJECTED
+  category            String   @default("CUSTOMER") // CUSTOMER, PARTNERSHIP, RECRUITMENT, GENERAL
+  partnershipDetails  Json?
+  recruitmentDetails  Json?
+  paymentStatus       String   @default("UNPAID")   // UNPAID, PAID
+  appointmentSlot     String?
+  intakeStatus        String   @default("IN_PROGRESS") // IN_PROGRESS, DOCTOR_REVIEW, APPROVED, REJECTED, COMPLETED
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
