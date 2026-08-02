@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'DrGodly Telehealth CRM Suite',
-  description: 'Premium Medical CRM for DrGodly Weight Loss Telehealth Clinic',
+  description: 'Premium Medical CRM for DrGodly Weight Loss Telehealth',
 };
 
 export default function RootLayout({

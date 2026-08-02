@@ -13,7 +13,7 @@ const DEFAULT_TEMPLATES = [
     language: 'en_US',
     status: 'APPROVED',
     headerType: 'TEXT',
-    headerText: 'DrGodly Telehealth Clinic',
+    headerText: 'DrGodly Telehealth',
     bodyText:
       'Hello {{1}}, your GLP-1 weight loss consultation request has been received. Please click below to confirm your intake details.',
     footerText: 'Reply STOP to unsubscribe',

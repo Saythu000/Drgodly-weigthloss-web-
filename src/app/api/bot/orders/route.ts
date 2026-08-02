@@ -130,7 +130,7 @@ export async function POST(request: Request) {
         `• Est. Delivery: 2-3 Business Days`,
         `• Live Tracker: ${trackingUrl}`,
         ``,
-        `Thank you for choosing DrGodly Weight Loss Clinic! 🩺`,
+        `Thank you for choosing DrGodly Weight Loss Telehealth! 🩺`,
       ].join('\n');
 
       const waRes = await sendWaTextMessage(phone, dispatchMsg);

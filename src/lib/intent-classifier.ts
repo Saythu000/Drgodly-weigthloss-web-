@@ -18,9 +18,9 @@ export interface IntentResult {
 const SYSTEM_PROMPT = `
 Classify incoming WhatsApp message into EXACTLY ONE category:
 1. CUSTOMER_WEIGHT_LOSS: Weight loss, GLP-1 (Ozempic, Wegovy, Rybelsus, Mounjaro), BMI, doctor appointment for weight, diet consultation.
-2. PARTNERSHIP: Business proposals, B2B, vendors, clinic tie-ups, software/supplies.
-3. RECRUITMENT: Job applications, career inquiries, nurse/doctor positions, resumes/CVs.
-4. GENERAL_CLINIC_QUERY: Clinic address, opening hours, general clinic info.
+2. PARTNERSHIP: Business proposals, B2B, vendors, telehealth tie-ups, software/supplies.
+3. RECRUITMENT: Job applications, resumes, hiring inquiries, medical staff.
+4. GENERAL_CLINIC_QUERY: Telehealth center address, opening hours, general info.
 5. PERSONAL_PRIVATE_CHAT: Casual chat, family/friends check-ins, personal greetings, dinner plans.
 
 Respond strictly in JSON: {"category": "CATEGORY_NAME", "confidence": 0.95, "reasoning": "brief explanation"}

@@ -877,7 +877,7 @@ function DealModal({
               onChange={(e) => setForm({ ...form, assignedUserId: e.target.value })}
             >
               <option value="doc-1">Dr. Kalyan (Physician)</option>
-              <option value="staff-1">Clinic Staff</option>
+              <option value="staff-1">Telehealth Staff</option>
             </select>
           </div>
         </div>

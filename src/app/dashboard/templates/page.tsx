@@ -477,7 +477,7 @@ export default function TemplatesPage() {
                 type="text"
                 value={headerText}
                 onChange={(e) => setHeaderText(e.target.value)}
-                placeholder="e.g. DrGodly Telehealth Clinic"
+                placeholder="e.g. DrGodly Telehealth"
                 className="w-full px-4 py-2.5 bg-surface border border-outline-variant/30 rounded-xl outline-none focus:border-secondary text-xs text-on-surface"
               />
             )}

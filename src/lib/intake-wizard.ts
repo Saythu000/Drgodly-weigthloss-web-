@@ -41,7 +41,7 @@ export enum ProgressStep {
 
 export const INTAKE_QUESTIONS: Record<IntakeStep, { question: string; options?: string[]; next: (val: string) => IntakeStep | 'COMPLETED' }> = {
   [IntakeStep.HEIGHT]: {
-    question: "Welcome to DrGodly Weight Loss Clinic! Let's start with your medical intake. What is your height in cm? (e.g. 175)",
+    question: "Welcome to DrGodly Weight Loss Telehealth! Let's start with your medical intake. What is your height in cm? (e.g. 175)",
     next: () => IntakeStep.WEIGHT,
   },
   [IntakeStep.WEIGHT]: {
@@ -325,7 +325,7 @@ export class IntakeWizard {
 
     delete pendingStore[cleanPhone];
     writeJson(PENDING_FILE, pendingStore);
-    return `✅ *Proposal Submitted!*\n\nThank you ${pending.data.name}. Your proposal has been submitted to Dr. Kalyan and our clinic team. We will review and contact you shortly. 🤝`;
+    return `✅ *Proposal Submitted!*\n\nThank you ${pending.data.name}. Your proposal has been submitted to Dr. Kalyan and our team. We will review and contact you shortly. 🤝`;
   }
 
   // ponytail: 3-step doctor recruitment collector
@@ -334,7 +334,7 @@ export class IntakeWizard {
     if (!pending || pending.type !== 'RECRUITMENT') {
       pendingStore[cleanPhone] = { type: 'RECRUITMENT', step: 'NAME_QUALIFICATION', data: {}, updatedAt: new Date().toISOString() };
       writeJson(PENDING_FILE, pendingStore);
-      return "🩺 *Doctor & Medical Staff Recruitment*\n\nThank you for reaching out to DrGodly Telehealth Clinic! What is your full name and medical degree/specialization? (e.g., Dr. Ananya Sharma, MD Internal Medicine / MBBS)";
+      return "🩺 *Doctor & Medical Staff Recruitment*\n\nThank you for reaching out to DrGodly Telehealth! What is your full name and medical degree/specialization? (e.g., Dr. Ananya Sharma, MD Internal Medicine / MBBS)";
     }
 
     if (pending.step === 'NAME_QUALIFICATION') {

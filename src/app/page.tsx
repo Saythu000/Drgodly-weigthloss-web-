@@ -45,7 +45,7 @@ export default function LoginPage() {
             <span className="material-symbols-outlined text-primary text-3xl">medical_services</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-on-surface">DrGodly Telehealth</h1>
-          <p className="text-xs text-on-surface-variant/70 mt-1">Weight Loss Clinic Staff Dashboard</p>
+          <p className="text-xs text-on-surface-variant/70 mt-1">Weight Loss Telehealth Staff Dashboard</p>
         </div>
 
         {errorMsg && (

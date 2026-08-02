@@ -71,7 +71,7 @@ export default function DigitalMarketingPage() {
             <div className="relative z-10 space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/15 text-[11px] font-bold tracking-wider uppercase text-secondary">
                 <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-                <span>DrGodly Clinic Enterprise Roadmap</span>
+                <span>DrGodly Telehealth Enterprise Roadmap</span>
               </div>
 
               <h1 className="text-3xl font-extrabold tracking-tight text-white">

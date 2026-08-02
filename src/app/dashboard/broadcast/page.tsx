@@ -730,7 +730,7 @@ export default function BulkMessagePage() {
                   <div className="bg-[#075E54] text-white pt-8 pb-2 px-3 rounded-t-[32px] flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs">Dr</div>
                     <div>
-                      <div className="text-xs font-bold leading-none">DrGodly Clinic</div>
+                      <div className="text-xs font-bold leading-none">DrGodly Telehealth</div>
                       <div className="text-[9px] opacity-80">online</div>
                     </div>
                   </div>

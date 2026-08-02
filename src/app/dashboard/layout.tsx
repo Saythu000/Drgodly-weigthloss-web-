@@ -79,7 +79,7 @@ export default function DashboardLayout({
           {!collapsed && (
             <div>
               <h1 id="dealer-name" className="font-headline-sm text-base font-bold text-surface-container-lowest">
-                DrGodly Clinic
+                DrGodly Telehealth
               </h1>
               <p className="text-on-primary-container font-label-sm text-[10px] uppercase tracking-widest mt-0.5 opacity-70">
                 Telehealth CRM

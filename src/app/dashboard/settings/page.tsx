@@ -10,7 +10,7 @@ export default function SettingsPage() {
   const [launchOnBoot, setLaunchOnBoot] = useState(true);
   const [checkUpdates, setCheckUpdates] = useState(true);
   const [systemPrompt, setSystemPrompt] = useState(
-    'You are an empathetic, professional intake assistant for DrGodly Weight Loss Telehealth Clinic. You evaluate patient eligibility for GLP-1 medications (Ozempic, Wegovy, Rybelsus, Mounjaro) based on BMI and medical risk factors.'
+    'You are an empathetic, professional intake assistant for DrGodly Weight Loss Telehealth. You evaluate patient eligibility for GLP-1 medications (Ozempic, Wegovy, Rybelsus, Mounjaro) based on BMI and medical risk factors.'
   );
 
   const [saving, setSaving] = useState(false);
