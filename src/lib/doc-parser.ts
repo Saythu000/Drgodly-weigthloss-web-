@@ -1,8 +1,4 @@
 // ponytail: clean multi-format document parser & chunker
-import * as pdfParseModule from 'pdf-parse';
-const pdfParse: any = (pdfParseModule as any).default || pdfParseModule;
-
-
 
 export interface ExtractedDocument {
   title: string;
@@ -90,13 +86,14 @@ export async function parseDocumentBuffer(
   try {
     if (ext === 'pdf') {
       try {
+        const pdfParseModule = await import('pdf-parse');
         const PDFParseClass = (pdfParseModule as any).PDFParse || (pdfParseModule as any).default || pdfParseModule;
         if (typeof PDFParseClass === 'function' && PDFParseClass.prototype && PDFParseClass.prototype.getText) {
           const parser = new PDFParseClass({ data: buffer });
           const parsed = await parser.getText();
           rawText = typeof parsed === 'string' ? parsed : (parsed?.text || '');
-        } else if (typeof pdfParse === 'function') {
-          const pdfData = await pdfParse(buffer);
+        } else if (typeof pdfParseModule === 'function') {
+          const pdfData = await (pdfParseModule as any)(buffer);
           rawText = pdfData.text || '';
         } else {
           rawText = buffer.toString('utf-8');
