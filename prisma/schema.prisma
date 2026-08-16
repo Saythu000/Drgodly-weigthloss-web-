@@ -134,4 +134,26 @@ model Eligibility {
   createdAt DateTime @default(now())
 }
 
+model KnowledgeBase {
+  id          String          @id @default(uuid())
+  title       String
+  category    String          @default("FAQ") // FAQ, MEDICAL_PROTOCOL, PRICING_POLICY, CLINIC_INFO
+  content     String
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  chunks      DocumentChunk[]
+}
+
+model DocumentChunk {
+  id              String        @id @default(uuid())
+  knowledgeBaseId String
+  knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  chunkIndex      Int
+  chunkContent    String
+  vectorEmbedding Json?
+  createdAt       DateTime      @default(now())
+}
+
+
 

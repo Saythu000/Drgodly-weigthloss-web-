@@ -26,6 +26,7 @@ export default function DashboardLayout({
     { id: 'nav-broadcast', label: 'Broadcast Center', path: '/dashboard/broadcast', icon: 'campaign' },
     { id: 'nav-templates', label: 'Message Templates', path: '/dashboard/templates', icon: 'dashboard_customize' },
     { id: 'nav-marketing', label: 'Digital Marketing', path: '/dashboard/marketing', icon: 'post_add' },
+    { id: 'nav-ai-agent', label: 'AI Agent & RAG', path: '/dashboard/ai-agent', icon: 'smart_toy' },
     { id: 'nav-preferences', label: 'Settings', path: '/dashboard/settings', icon: 'settings' },
   ];
 
