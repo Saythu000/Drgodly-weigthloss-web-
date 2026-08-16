@@ -89,8 +89,22 @@ export async function parseDocumentBuffer(
 
   try {
     if (ext === 'pdf') {
-      const pdfData = await pdfParse(buffer);
-      rawText = pdfData.text || '';
+      try {
+        const PDFParseClass = (pdfParseModule as any).PDFParse || (pdfParseModule as any).default || pdfParseModule;
+        if (typeof PDFParseClass === 'function' && PDFParseClass.prototype && PDFParseClass.prototype.getText) {
+          const parser = new PDFParseClass({ data: buffer });
+          const parsed = await parser.getText();
+          rawText = typeof parsed === 'string' ? parsed : (parsed?.text || '');
+        } else if (typeof pdfParse === 'function') {
+          const pdfData = await pdfParse(buffer);
+          rawText = pdfData.text || '';
+        } else {
+          rawText = buffer.toString('utf-8');
+        }
+      } catch (pdfErr: any) {
+        console.error('PDF Parse Error:', pdfErr);
+        rawText = buffer.toString('utf-8');
+      }
       fileType = 'PDF';
     } else if (ext === 'csv' || ext === 'tsv') {
       const parsed = parseCSVText(buffer.toString('utf-8'));
