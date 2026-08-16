@@ -62,6 +62,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'No file uploaded' }, { status: 400 });
     }
 
+    // 50MB File Size Limit Check
+    if (file.size > 50 * 1024 * 1024) {
+      return NextResponse.json({ success: false, error: 'File size exceeds maximum 50MB limit' }, { status: 400 });
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const sizeInKb = (file.size / 1024).toFixed(1) + ' KB';
@@ -70,7 +75,10 @@ export async function POST(req: NextRequest) {
     const parsedDoc = await parseDocumentBuffer(buffer, file.name);
 
     if (!parsedDoc.rawText || parsedDoc.rawText.trim().length === 0) {
-      return NextResponse.json({ success: false, error: 'Could not extract readable text from document' }, { status: 400 });
+      return NextResponse.json({
+        success: false,
+        error: 'Could not extract readable text from document. Ensure the PDF is not password-protected or an image-only scan.'
+      }, { status: 400 });
     }
 
     // Ingest Chunks into Knowledge Base
