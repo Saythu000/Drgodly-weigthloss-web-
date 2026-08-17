@@ -223,28 +223,32 @@ export async function ingestDocumentChunksAsync(
 
   const localItems = getKnowledgeBaseLocal();
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunkTitle = `${filename} (Part ${i + 1}/${chunks.length})`;
-    const chunkContent = `[Source Document: ${filename}]\n${chunks[i]}`;
+  const chunkObjects = chunks.map((chunk, i) => ({
+    title: `${filename} (Part ${i + 1}/${chunks.length})`,
+    category,
+    content: `[Source Document: ${filename}]\n${chunk}`,
+    isActive: true,
+  }));
 
-    try {
-      await prisma.knowledgeBase.create({
-        data: {
-          title: chunkTitle,
-          category,
-          content: chunkContent,
-          isActive: true,
-        },
-      });
-    } catch (e) {
-      // fallback to local
-    }
+  try {
+    await prisma.knowledgeBase.createMany({
+      data: chunkObjects,
+    });
+  } catch (e) {
+    // Fallback to parallel Promise.all if createMany fails
+    await Promise.all(
+      chunkObjects.map((item) =>
+        prisma.knowledgeBase.create({ data: item }).catch(() => null)
+      )
+    );
+  }
 
+  for (let i = 0; i < chunkObjects.length; i++) {
     localItems.unshift({
       id: `kb-doc-${Date.now()}-${i}`,
-      title: chunkTitle,
+      title: chunkObjects[i].title,
       category,
-      content: chunkContent,
+      content: chunkObjects[i].content,
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
