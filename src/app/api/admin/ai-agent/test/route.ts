@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const cleanMessage = message.trim();
     const activeDomain = getActiveDomainProfile();
     const intentResult = await classifyIntent(cleanMessage);
-    const matchedChunks = await searchKnowledgeBase(cleanMessage, 3);
+    const matchedChunks = await searchKnowledgeBase(cleanMessage, 3, intentResult.category);
     const reactResult = await runReActAgentLoop(cleanMessage);
 
     // Pass through Guardrails & Dynamic Prompt Validation Loop

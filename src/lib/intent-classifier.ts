@@ -4,6 +4,7 @@ import path from 'node:path';
 
 export type IntentCategory =
   | 'CUSTOMER_WEIGHT_LOSS'
+  | 'TRAVEL_AND_TOURISM'
   | 'PARTNERSHIP'
   | 'RECRUITMENT'
   | 'GENERAL_CLINIC_QUERY'
@@ -18,10 +19,11 @@ export interface IntentResult {
 const SYSTEM_PROMPT = `
 Classify incoming WhatsApp message into EXACTLY ONE category:
 1. CUSTOMER_WEIGHT_LOSS: Weight loss, GLP-1 (Ozempic, Wegovy, Rybelsus, Mounjaro), BMI, doctor appointment for weight, diet consultation.
-2. PARTNERSHIP: Business proposals, B2B, vendors, telehealth tie-ups, software/supplies.
-3. RECRUITMENT: Job applications, resumes, hiring inquiries, medical staff.
-4. GENERAL_CLINIC_QUERY: Telehealth center address, opening hours, general info.
-5. PERSONAL_PRIVATE_CHAT: Casual chat, family/friends check-ins, personal greetings, dinner plans.
+2. TRAVEL_AND_TOURISM: Tour packages, travel itineraries, sightseeing, Pondicherry, Mahabalipuram, hotels, ticket bookings, travel cost.
+3. PARTNERSHIP: Business proposals, B2B, vendors, telehealth tie-ups, software/supplies.
+4. RECRUITMENT: Job applications, resumes, hiring inquiries, medical staff.
+5. GENERAL_CLINIC_QUERY: Telehealth center address, opening hours, general info.
+6. PERSONAL_PRIVATE_CHAT: Casual chat, family/friends check-ins, personal greetings, dinner plans.
 
 Respond strictly in JSON: {"category": "CATEGORY_NAME", "confidence": 0.95, "reasoning": "brief explanation"}
 `;
@@ -86,22 +88,27 @@ export async function classifyIntent(text: string): Promise<IntentResult> {
   // ponytail: direct keyword rule fallback (YAGNI offline safety)
   const lower = clean.toLowerCase();
 
-  // 1. Check RECRUITMENT first (Doctor/Medical hiring, jobs, applications)
-  if (['job', 'career', 'recruit', 'vacancy', 'hiring', 'nurse', 'resume', 'cv', 'doctor', 'physician', 'apply', 'joining', 'medical staff', '3', 'three'].some((k) => lower.includes(k))) {
+  // 1. Check TRAVEL_AND_TOURISM first (tour packages, trips, Pondicherry)
+  if (['trip', 'tour', 'pondicherry', 'mahabalipuram', 'pichavaram', 'package', 'itinerary', 'mangrove', 'travel', 'bus', 'train', 'hotel', 'stay', 'resort'].some((k) => lower.includes(k))) {
+    return { category: 'TRAVEL_AND_TOURISM', confidence: 0.9, reasoning: 'Rule match travel & tourism' };
+  }
+
+  // 2. Check RECRUITMENT (Doctor/Medical hiring, jobs, applications)
+  if (['job', 'career', 'recruit', 'vacancy', 'hiring', 'nurse', 'resume', 'cv', 'doctor', 'physician', 'apply', 'joining', 'medical staff'].some((k) => lower.includes(k))) {
     return { category: 'RECRUITMENT', confidence: 0.9, reasoning: 'Rule match recruitment' };
   }
 
-  // 2. Check PARTNERSHIP second (B2B, business tie-ups, vendors, proposals)
-  if (['partner', 'collaboration', 'vendor', 'b2b', 'proposal', '2', 'two'].some((k) => lower.includes(k))) {
+  // 3. Check PARTNERSHIP (B2B, business tie-ups, vendors, proposals)
+  if (['partner', 'collaboration', 'vendor', 'b2b', 'proposal'].some((k) => lower.includes(k))) {
     return { category: 'PARTNERSHIP', confidence: 0.9, reasoning: 'Rule match partnership' };
   }
 
-  // 3. Check CUSTOMER_WEIGHT_LOSS third (Weight loss, GLP-1, BMI, patient consult)
-  if (['weight', 'ozempic', 'wegovy', 'rybelsus', 'mounjaro', 'glp', 'bmi', 'consultation', 'doctor consult', 'doctor appointment', 'intake', '1', 'one'].some((k) => lower.includes(k))) {
+  // 4. Check CUSTOMER_WEIGHT_LOSS (Weight loss, GLP-1, BMI, patient consult)
+  if (['weight', 'ozempic', 'wegovy', 'rybelsus', 'mounjaro', 'glp', 'bmi', 'diet', 'slimming', 'consultation', 'doctor consult', 'doctor appointment', 'intake'].some((k) => lower.includes(k))) {
     return { category: 'CUSTOMER_WEIGHT_LOSS', confidence: 0.9, reasoning: 'Rule match weight loss' };
   }
 
-  // 4. Check GENERAL_CLINIC_QUERY fourth (Timing, address, location)
+  // 5. Check GENERAL_CLINIC_QUERY (Timing, address, location)
   if (['address', 'location', 'hours', 'timing', 'where'].some((k) => lower.includes(k))) {
     return { category: 'GENERAL_CLINIC_QUERY', confidence: 0.85, reasoning: 'Rule match general query' };
   }
