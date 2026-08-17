@@ -116,6 +116,40 @@ export function cleanPDFText(text: string): string {
 }
 
 /**
+ * Fallback PDF text extractor that parses PDF text streams (Tj/TJ operations)
+ * directly from raw PDF buffer without requiring pdfjs workers or DOM elements.
+ */
+export function extractPDFTextFallback(buffer: Buffer): string {
+  const str = buffer.toString('latin1');
+  const textMatches: string[] = [];
+
+  const tjRegex = /\(([^()\r\n]+)\)\s*Tj/g;
+  let match;
+  while ((match = tjRegex.exec(str)) !== null) {
+    if (match[1] && match[1].trim().length > 0) {
+      textMatches.push(match[1].trim());
+    }
+  }
+
+  const arrayTjRegex = /\[\s*((?:\([^()\r\n]+\)\s*|-?\d+\s*)+)\]\s*TJ/gi;
+  while ((match = arrayTjRegex.exec(str)) !== null) {
+    const inner = match[1];
+    const itemRegex = /\(([^()\r\n]+)\)/g;
+    let item;
+    const lineParts: string[] = [];
+    while ((item = itemRegex.exec(inner)) !== null) {
+      if (item[1]) lineParts.push(item[1]);
+    }
+    if (lineParts.length > 0) {
+      textMatches.push(lineParts.join(' '));
+    }
+  }
+
+  const rawExtracted = textMatches.join('\n');
+  return cleanPDFText(rawExtracted);
+}
+
+/**
  * Extracts raw text from uploaded Buffer according to file MIME type or extension.
  */
 export async function parseDocumentBuffer(
@@ -129,23 +163,22 @@ export async function parseDocumentBuffer(
   try {
     if (ext === 'pdf') {
       try {
-        const pdfParseModule = await import('pdf-parse');
-        const pdfFn = (pdfParseModule as any).default || pdfParseModule;
+        // Direct import of pdf-parse lib to avoid test execution & worker bundling issues
+        // @ts-ignore
+        const pdfParseModule = await import('pdf-parse/lib/pdf-parse.js');
+        const pdfParse = pdfParseModule.default || pdfParseModule;
 
-        if (typeof pdfFn === 'function') {
-          const pdfData = await pdfFn(buffer);
+        if (typeof pdfParse === 'function') {
+          const pdfData = await pdfParse(buffer);
           rawText = pdfData?.text || '';
-        } else {
-          const PDFParseClass = (pdfParseModule as any).PDFParse;
-          if (typeof PDFParseClass === 'function') {
-            const parser = new PDFParseClass({ data: buffer });
-            if (typeof parser.load === 'function') await parser.load();
-            const parsed = await parser.getText();
-            rawText = typeof parsed === 'string' ? parsed : (parsed?.text || '');
-          }
         }
       } catch (pdfErr: any) {
-        console.error('PDF Parse Error:', pdfErr?.message || pdfErr);
+        console.error('pdf-parse primary error, trying fallback stream extractor:', pdfErr?.message || pdfErr);
+      }
+
+      // If primary parser returned empty or failed, use fallback PDF stream extractor
+      if (!rawText || rawText.trim().length === 0) {
+        rawText = extractPDFTextFallback(buffer);
       }
 
       // Sanitize text to ensure no binary PDF stream leaks into database
