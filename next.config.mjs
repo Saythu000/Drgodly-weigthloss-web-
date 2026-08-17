@@ -5,6 +5,9 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['@whiskeysockets/baileys', 'pino'],
+    serverActions: {
+      bodySizeLimit: '50mb',
+    },
   },
 };
 
