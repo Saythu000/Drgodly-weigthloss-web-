@@ -1,5 +1,19 @@
 // ponytail: clean multi-format document parser & chunker
 
+// Polyfill browser globals required by pdfjs-dist / pdf-parse in Node.js environments
+if (typeof (global as any).DOMMatrix === 'undefined') {
+  (global as any).DOMMatrix = class DOMMatrix {
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+    matrixTransform() { return { x: 0, y: 0 }; }
+  };
+}
+if (typeof (global as any).ImageData === 'undefined') {
+  (global as any).ImageData = class ImageData {};
+}
+if (typeof (global as any).Path2D === 'undefined') {
+  (global as any).Path2D = class Path2D {};
+}
+
 export interface ExtractedDocument {
   title: string;
   fileType: string;
