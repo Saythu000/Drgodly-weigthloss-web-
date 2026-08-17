@@ -73,6 +73,35 @@ export function parseCSVText(csvContent: string): { title: string; text: string 
 }
 
 /**
+ * Cleans extracted PDF text to strip raw PDF binary stream artifacts,
+ * unprintable control characters, and PDF formatting metadata.
+ */
+export function cleanPDFText(text: string): string {
+  if (!text) return '';
+
+  let cleaned = text;
+
+  // If text contains raw PDF binary headers/objects, filter out binary commands
+  if (cleaned.includes('%PDF-') || cleaned.includes('endobj') || cleaned.includes('00000 n')) {
+    const lines = cleaned.split('\n').filter((line) => {
+      const trimmed = line.trim();
+      if (/^(%PDF|[\d\s]+obj|endobj|xref|trailer|startxref|[\d\s]+[nf]|\/Type|\/Font|\/MediaBox|\/Contents|\/ProcSet|\/ExtGState)/i.test(trimmed)) {
+        return false;
+      }
+      // Must contain at least 4 alphanumeric words/characters
+      const alphaCount = (trimmed.match(/[a-zA-Z0-9]/g) || []).length;
+      return alphaCount >= 4;
+    });
+    cleaned = lines.join('\n');
+  }
+
+  // Remove non-printable binary control characters
+  cleaned = cleaned.replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F\uFFFD]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  return cleaned;
+}
+
+/**
  * Extracts raw text from uploaded Buffer according to file MIME type or extension.
  */
 export async function parseDocumentBuffer(
@@ -87,21 +116,26 @@ export async function parseDocumentBuffer(
     if (ext === 'pdf') {
       try {
         const pdfParseModule = await import('pdf-parse');
-        const PDFParseClass = (pdfParseModule as any).PDFParse || (pdfParseModule as any).default || pdfParseModule;
-        if (typeof PDFParseClass === 'function' && PDFParseClass.prototype && PDFParseClass.prototype.getText) {
-          const parser = new PDFParseClass({ data: buffer });
-          const parsed = await parser.getText();
-          rawText = typeof parsed === 'string' ? parsed : (parsed?.text || '');
-        } else if (typeof pdfParseModule === 'function') {
-          const pdfData = await (pdfParseModule as any)(buffer);
-          rawText = pdfData.text || '';
+        const pdfFn = (pdfParseModule as any).default || pdfParseModule;
+
+        if (typeof pdfFn === 'function') {
+          const pdfData = await pdfFn(buffer);
+          rawText = pdfData?.text || '';
         } else {
-          rawText = buffer.toString('utf-8');
+          const PDFParseClass = (pdfParseModule as any).PDFParse;
+          if (typeof PDFParseClass === 'function') {
+            const parser = new PDFParseClass({ data: buffer });
+            if (typeof parser.load === 'function') await parser.load();
+            const parsed = await parser.getText();
+            rawText = typeof parsed === 'string' ? parsed : (parsed?.text || '');
+          }
         }
       } catch (pdfErr: any) {
-        console.error('PDF Parse Error:', pdfErr);
-        rawText = buffer.toString('utf-8');
+        console.error('PDF Parse Error:', pdfErr?.message || pdfErr);
       }
+
+      // Sanitize text to ensure no binary PDF stream leaks into database
+      rawText = cleanPDFText(rawText);
       fileType = 'PDF';
     } else if (ext === 'csv' || ext === 'tsv') {
       const parsed = parseCSVText(buffer.toString('utf-8'));
@@ -118,10 +152,12 @@ export async function parseDocumentBuffer(
     }
   } catch (err: any) {
     console.error(`Error parsing document ${filename}:`, err);
-    rawText = buffer.toString('utf-8');
+    rawText = '';
   }
 
-  const chunks = chunkText(rawText);
+  // Cap maximum chunks to 150 per document to protect DB
+  const rawChunks = chunkText(rawText);
+  const chunks = rawChunks.slice(0, 150);
 
   return {
     title: filename.replace(/\.[^/.]+$/, ''),
