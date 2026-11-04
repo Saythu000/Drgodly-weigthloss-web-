@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { AttributionData, formatAttributionBadge } from '@/lib/tracking/attribution';
 
 interface PatientLead {
   id: string;
@@ -22,6 +23,7 @@ interface PatientLead {
   healthData: any;
   history: any;
   additionalInfo: string;
+  attribution?: AttributionData | null;
   createdAt: string;
   orders: any[];
 }
@@ -32,6 +34,7 @@ export default function LeadsDirectoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [stateFilter, setStateFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
   const [selectedPatient, setSelectedPatient] = useState<PatientLead | null>(null);
 
   // Fetch live patient leads from /api/bot/leads
@@ -55,25 +58,27 @@ export default function LeadsDirectoryPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Compute 4 Top Summary Counts matching dashboard.html lines 426-463
+  // Compute Top Summary Counts
   const totalCount = patients.length;
   const healthyCount = patients.filter((p) => p.clinicalStatus === 'Healthy').length;
   const reviewCount = patients.filter((p) => p.clinicalStatus === 'Doctor Review').length;
   const leadCount = patients.filter((p) => p.clinicalStatus === 'Lead').length;
 
-  // Dynamically extract unique states for State Filter dropdown matching dashboard.ts line 475
+  // Dynamically extract unique states for State Filter dropdown
   const uniqueStates = Array.from(
     new Set(patients.map((p) => p.area).filter((area) => area && area !== '—'))
   ).sort();
 
-  // Filter patients based on Search, Status, and State
+  // Filter patients based on Search, Status, State, and Marketing Channel
   const filteredPatients = patients.filter((p) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       !term ||
       p.name.toLowerCase().includes(term) ||
       p.phoneNumber.toLowerCase().includes(term) ||
-      p.area.toLowerCase().includes(term);
+      p.area.toLowerCase().includes(term) ||
+      (p.attribution?.campaign && p.attribution.campaign.toLowerCase().includes(term)) ||
+      (p.attribution?.source && p.attribution.source.toLowerCase().includes(term));
 
     const matchesStatus =
       statusFilter === 'all' || p.clinicalStatus.toLowerCase() === statusFilter.toLowerCase();
@@ -81,40 +86,44 @@ export default function LeadsDirectoryPage() {
     const matchesState =
       stateFilter === 'all' || p.area.toLowerCase() === stateFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus && matchesState;
+    const matchesChannel =
+      channelFilter === 'all' ||
+      (p.attribution?.source && p.attribution.source.toLowerCase().includes(channelFilter.toLowerCase()));
+
+    return matchesSearch && matchesStatus && matchesState && matchesChannel;
   });
 
   return (
-    <div className="flex-1 h-full overflow-y-auto p-8 custom-scrollbar space-y-6 relative">
-      {/* Page Header */}
-      <div className="flex justify-between items-end mb-2">
+    <div className="p-8 space-y-6 max-w-7xl mx-auto custom-scrollbar">
+      {/* Page Title */}
+      <div className="flex justify-between items-center">
         <div>
-          <h3 className="font-headline-lg text-headline-lg font-bold text-on-surface mb-1">Patient Directory</h3>
-          <p className="text-on-surface-variant text-sm">
-            Manage intakes, view medical qualifications, and track manual/broadcast order history.
+          <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Patient Leads & CRM</h2>
+          <p className="text-on-surface-variant font-body-sm text-xs mt-1">
+            Real-time patient intake directory with healthcare triage and marketing attribution.
           </p>
         </div>
       </div>
 
-      {/* 4 Analytics Summary Cards matching Image 1 & dashboard.html lines 426-463 */}
+      {/* Top 4 Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Card 1: Total Patients */}
         <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center gap-4 hover:border-secondary transition-all">
           <div className="p-3 bg-secondary/10 text-secondary rounded-lg">
-            <span className="material-symbols-outlined text-2xl">group</span>
+            <span className="material-symbols-outlined text-2xl">people</span>
           </div>
           <div>
-            <span className="text-xs text-on-surface-variant uppercase font-bold block tracking-wider">Total Patients</span>
+            <span className="text-xs text-on-surface-variant uppercase font-bold block tracking-wider">Total Leads</span>
             <span id="crm-stat-total" className="text-xl font-bold text-on-surface">
               {totalCount}
             </span>
           </div>
         </div>
 
-        {/* Card 2: Healthy / Approved */}
-        <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center gap-4 hover:border-emerald-500 transition-all">
+        {/* Card 2: Healthy Status */}
+        <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center gap-4 hover:border-green-500 transition-all">
           <div className="p-3 bg-green-500/10 text-green-600 rounded-lg">
-            <span className="material-symbols-outlined text-2xl">task_alt</span>
+            <span className="material-symbols-outlined text-2xl">verified</span>
           </div>
           <div>
             <span className="text-xs text-on-surface-variant uppercase font-bold block tracking-wider">Healthy / Approved</span>
@@ -151,7 +160,7 @@ export default function LeadsDirectoryPage() {
         </div>
       </div>
 
-      {/* CRM Toolbar: Search and Dual Filters matching dashboard.html lines 466-485 */}
+      {/* CRM Toolbar: Search and Filters */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
         <div className="relative w-full md:w-80">
           <input
@@ -159,7 +168,7 @@ export default function LeadsDirectoryPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name, phone or state..."
+            placeholder="Search by name, phone, UTM campaign..."
             className="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-10 pr-4 focus:border-secondary transition-all outline-none font-body-md text-sm text-on-surface"
           />
           <span className="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant text-sm">
@@ -168,6 +177,20 @@ export default function LeadsDirectoryPage() {
         </div>
 
         <div className="flex flex-wrap gap-3 w-full md:w-auto justify-end">
+          {/* Channel Filter */}
+          <select
+            id="crm-filter-channel"
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+            className="bg-surface border border-outline-variant/40 rounded-xl py-2.5 px-4 text-xs font-semibold text-on-surface-variant outline-none focus:border-secondary transition-all cursor-pointer"
+          >
+            <option value="all">All Ad Channels</option>
+            <option value="meta">Meta / Instagram Ads</option>
+            <option value="google">Google Ads</option>
+            <option value="whatsapp">WhatsApp Promo</option>
+            <option value="direct">Direct / Organic</option>
+          </select>
+
           {/* Status Filter */}
           <select
             id="crm-filter-status"
@@ -198,7 +221,7 @@ export default function LeadsDirectoryPage() {
         </div>
       </div>
 
-      {/* CRM Table Container matching dashboard.html lines 488-506 */}
+      {/* CRM Table Container */}
       <div className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(0,26,63,0.05)] border border-outline-variant/30 overflow-hidden">
         <div className="overflow-x-auto max-h-[calc(100vh-360px)] custom-scrollbar">
           <table className="w-full text-left border-collapse">
@@ -206,6 +229,7 @@ export default function LeadsDirectoryPage() {
               <tr className="border-b border-outline-variant/30">
                 <th className="px-6 py-4 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">Patient Name</th>
                 <th className="px-6 py-4 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">Contact</th>
+                <th className="px-6 py-4 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">Acquisition Source</th>
                 <th className="px-6 py-4 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">Clinical Status</th>
                 <th className="px-6 py-4 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">Order History</th>
                 <th className="px-6 py-4 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">State</th>
@@ -215,13 +239,13 @@ export default function LeadsDirectoryPage() {
             <tbody className="divide-y divide-outline-variant/20" id="leads-body">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-xs text-on-surface-variant">
+                  <td colSpan={7} className="text-center py-8 text-xs text-on-surface-variant">
                     Loading patient directory...
                   </td>
                 </tr>
               ) : filteredPatients.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-xs text-on-surface-variant">
+                  <td colSpan={7} className="text-center py-8 text-xs text-on-surface-variant">
                     No patient records matching filter.
                   </td>
                 </tr>
@@ -236,6 +260,8 @@ export default function LeadsDirectoryPage() {
                     : isReview
                     ? 'bg-amber-500/10 text-amber-600 border border-amber-500/30'
                     : 'bg-blue-500/10 text-blue-600 border border-blue-500/30';
+
+                  const attrBadge = formatAttributionBadge(patient.attribution);
 
                   return (
                     <tr
@@ -261,6 +287,11 @@ export default function LeadsDirectoryPage() {
                       <td className="px-6 py-4">
                         <span className="font-mono text-xs text-on-surface block">{patient.phoneNumber}</span>
                         <span className="text-[10px] text-on-surface-variant/60 font-mono">{patient.whatsappJid}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border inline-block ${attrBadge.badgeClass}`}>
+                          {attrBadge.label}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeClass}`}>
@@ -289,7 +320,7 @@ export default function LeadsDirectoryPage() {
         </div>
       </div>
 
-      {/* Slide-over Patient Drawer Overlay (z-50) matching dashboard.html lines 509-594 */}
+      {/* Slide-over Patient Drawer Overlay */}
       <div
         id="patient-drawer"
         className={`fixed top-0 right-0 h-full w-[460px] bg-surface-container-lowest border-l border-outline-variant shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col ${
@@ -348,6 +379,53 @@ export default function LeadsDirectoryPage() {
                     {selectedPatient.area}
                   </span>
                 </div>
+              </div>
+
+              {/* Marketing & Attribution Card */}
+              <div className="p-4 bg-surface rounded-xl border border-secondary/30 space-y-2">
+                <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-secondary text-sm">campaign</span>
+                    <span className="text-xs font-bold text-on-surface uppercase tracking-wider">
+                      Marketing Attribution
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-secondary font-bold">First-Touch</span>
+                </div>
+                {selectedPatient.attribution ? (
+                  <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+                    <div>
+                      <span className="text-[10px] text-on-surface-variant/70 block">Source:</span>
+                      <span className="font-semibold text-on-surface capitalize">{selectedPatient.attribution.source}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-on-surface-variant/70 block">Medium:</span>
+                      <span className="font-semibold text-on-surface capitalize">{selectedPatient.attribution.medium}</span>
+                    </div>
+                    {selectedPatient.attribution.campaign && (
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-on-surface-variant/70 block">Campaign:</span>
+                        <span className="font-mono text-secondary font-bold">{selectedPatient.attribution.campaign}</span>
+                      </div>
+                    )}
+                    {selectedPatient.attribution.fbclid && (
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-on-surface-variant/70 block">Meta Click ID (fbclid):</span>
+                        <span className="font-mono text-[10px] text-on-surface-variant truncate block max-w-xs">{selectedPatient.attribution.fbclid}</span>
+                      </div>
+                    )}
+                    {selectedPatient.attribution.gclid && (
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-on-surface-variant/70 block">Google Click ID (gclid):</span>
+                        <span className="font-mono text-[10px] text-on-surface-variant truncate block max-w-xs">{selectedPatient.attribution.gclid}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-on-surface-variant/70 italic py-1">
+                    Direct visit / Organic navigation (No ad parameters detected).
+                  </p>
+                )}
               </div>
 
               {/* Medical Profile Details */}
@@ -418,7 +496,7 @@ export default function LeadsDirectoryPage() {
                 </div>
               </div>
 
-              {/* WhatsApp Order History */}
+              {/* Order History */}
               <div className="space-y-3">
                 <h5 className="font-bold text-xs uppercase tracking-wider text-on-surface-variant border-b border-outline-variant/20 pb-1">
                   Order History
