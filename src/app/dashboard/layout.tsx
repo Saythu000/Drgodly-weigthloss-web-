@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+// WhatsApp connection pill in the top-right header. Set to true to show it and resume polling.
+const SHOW_WHATSAPP_STATUS = false;
+
 export default function DashboardLayout({
   children,
 }: {
@@ -19,21 +22,26 @@ export default function DashboardLayout({
   );
 
   const navItems = [
-    { id: 'nav-overview', label: 'Overview', path: '/dashboard', icon: 'dashboard' },
-    { id: 'nav-customers', label: 'Customer CRM', path: '/dashboard/leads', icon: 'groups' },
-    { id: 'nav-pipelines', label: 'Patient Pipeline', path: '/dashboard/pipelines', icon: 'view_kanban' },
-    { id: 'nav-chat', label: 'WhatsApp Live Chat', path: '/dashboard/inbox', icon: 'chat' },
-    { id: 'nav-broadcast', label: 'Broadcast Center', path: '/dashboard/broadcast', icon: 'campaign' },
-    { id: 'nav-templates', label: 'Message Templates', path: '/dashboard/templates', icon: 'dashboard_customize' },
+    { id: 'nav-overview', label: 'Overview', path: '/dashboard', icon: 'dashboard', hidden: true },
+    { id: 'nav-customers', label: 'Customer CRM', path: '/dashboard/leads', icon: 'groups', hidden: true },
+    { id: 'nav-pipelines', label: 'Patient Pipeline', path: '/dashboard/pipelines', icon: 'view_kanban', hidden: true },
+    { id: 'nav-chat', label: 'WhatsApp Live Chat', path: '/dashboard/inbox', icon: 'chat', hidden: true },
+    { id: 'nav-broadcast', label: 'Broadcast Center', path: '/dashboard/broadcast', icon: 'campaign', hidden: true },
+    { id: 'nav-templates', label: 'Message Templates', path: '/dashboard/templates', icon: 'dashboard_customize', hidden: true },
     { id: 'nav-marketing', label: 'Digital Marketing', path: '/dashboard/marketing', icon: 'post_add' },
-    { id: 'nav-ai-agent', label: 'AI Agent & RAG', path: '/dashboard/ai-agent', icon: 'smart_toy' },
-    { id: 'nav-preferences', label: 'Settings', path: '/dashboard/settings', icon: 'settings' },
+    { id: 'nav-ai-agent', label: 'AI Agent & RAG', path: '/dashboard/ai-agent', icon: 'smart_toy', hidden: true },
+    { id: 'nav-preferences', label: 'Settings', path: '/dashboard/settings', icon: 'settings', hidden: true },
   ];
+
+  // Tabs marked `hidden` stay defined and routable; they are only left out of the sidebar.
+  const visibleNavItems = navItems.filter((item) => !item.hidden);
 
   const currentTabName = navItems.find((n) => pathname === n.path || (n.path !== '/dashboard' && pathname.startsWith(n.path)))?.label || 'Overview';
 
   // Poll /api/bot/status to keep top-right header status pill dynamically updated
   useEffect(() => {
+    if (!SHOW_WHATSAPP_STATUS) return;
+
     const fetchStatus = async () => {
       try {
         const res = await fetch('/api/bot/status');
@@ -95,7 +103,7 @@ export default function DashboardLayout({
         </div>
 
         <nav className="flex-1 space-y-1.5 px-2 overflow-y-auto custom-scrollbar">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
             return (
               <Link
@@ -153,12 +161,14 @@ export default function DashboardLayout({
 
           <div className="flex items-center gap-4">
             {/* Status Pill */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${headerPillClass}`}>
-              <span id="status-dot" className={`w-2 h-2 rounded-full ${headerDotColor} animate-pulse`}></span>
-              <span id="status-text" className="font-label-sm text-xs font-semibold">
-                {headerStatusText}
-              </span>
-            </div>
+            {SHOW_WHATSAPP_STATUS && (
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${headerPillClass}`}>
+                <span id="status-dot" className={`w-2 h-2 rounded-full ${headerDotColor} animate-pulse`}></span>
+                <span id="status-text" className="font-label-sm text-xs font-semibold">
+                  {headerStatusText}
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <button

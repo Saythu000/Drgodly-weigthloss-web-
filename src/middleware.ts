@@ -7,11 +7,21 @@ export function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get('drgodly_session')?.value;
   const isAuthenticated = sessionCookie === 'authenticated_admin_session';
 
+  // The app opens directly on Digital Marketing. The landing page stays in src/app/page.tsx.
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL('/dashboard/marketing', request.url));
+  }
+
   // Protect /dashboard routes: redirect to /login if not authenticated
   if (pathname.startsWith('/dashboard')) {
     if (!isAuthenticated) {
       const loginUrl = new URL('/login', request.url);
       return NextResponse.redirect(loginUrl);
+    }
+
+    // Overview tab is hidden, so the dashboard home opens on Digital Marketing
+    if (pathname === '/dashboard') {
+      return NextResponse.redirect(new URL('/dashboard/marketing', request.url));
     }
   }
 
